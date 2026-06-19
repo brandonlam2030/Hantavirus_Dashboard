@@ -1,10 +1,17 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib as plt
+import matplotlib.pyplot as plt
+import webbrowser
+
+title, button = st.columns([20,1])
+powerBI = ""
 
 
-st.title("Hantavirus Tracking and Prediction Dashboard")
+with title:
+    st.title("Hantavirus Tracking and Prediction Dashboard")
+with button: 
+    st.button("PowerBI", type = "primary")    
 st.set_page_config(layout = "wide")
 
 
@@ -36,7 +43,7 @@ with tab4:
         "state": contact.text_input("Enter state:"),
         "country": contact.text_input("Enter country:"),
         "zipCode": contact.text_input("Enter zipCode:"),
-        "age": contact.number_input("Enter age:"),
+        "age": contact.number_input("Enter age:", min_value = 1, max_value = 116, step = 1),
         "email": contact.text_input("Email:"),
         "symptoms": contact.multiselect("Symptom(s) (Select all that apply)", uniqueSymptoms)
         }
@@ -52,9 +59,16 @@ with tab4:
 
 
 
-# with tab2:
-#     regionCounts = cases.groupby("country").size().reset_index(name = "count")
-#     print(regionCounts)
+with tab2:
+    regionCounts = cases.groupby("country").size().reset_index(name = "count")
+    details, piChart  = st.columns(2)
+    
+    with piChart:
+        fig, ax = plt.subplots()
+        ax.pie(regionCounts["count"], labels = regionCounts["country"])
+        st.pyplot(fig)
+
+
 
 
     

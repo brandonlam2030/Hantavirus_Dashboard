@@ -13,6 +13,10 @@ powerBI = ""
 if "pageIdx" not in st.session_state:
     st.session_state.pageIdx = 0
 
+
+if "filters" not in st.session_state:
+    st.session_state.filters = []
+
 with title:
     st.title("Hantavirus Tracking and Prediction Dashboard")
 with button: 
@@ -28,6 +32,7 @@ cases.columns = cases.iloc[0]
 cases = cases[1:].reset_index(drop = True)
 
 
+image = st.components.v1
 
 with tab1:
     box1, box2, box3 = st.columns(3)
@@ -46,8 +51,11 @@ with tab1:
 
     yearlyCounts = cases.groupby("year").size().reset_index(name = "count")
 
+
+
     st.header("Progression of Hantavirus Cases (2000 - Present)")
     st.line_chart(yearlyCounts, x = "year", y = "count", x_label = "Year", y_label = "Number of Cases")
+    image.iframe("https://app.powerbi.com/groups/me/reports/b9da4980-5c10-4295-8a3d-0d8118c8f8e2/ab6528c30b6aeaaaaa5c?experience=power-bi")
 
 
 
@@ -91,17 +99,15 @@ with tab4:
 firstLoad = True
 
 with tab2:
-    # regionCounts = cases.groupby("country").size().reset_index(name = "count")
-    # details, piChart  = st.columns(2)
-    
-    # with piChart:
-    #     fig, ax = plt.subplots()
-    #     ax.pie(regionCounts["count"], labels = regionCounts["country"])
-    #     st.pyplot(fig)
+    dataTable = st.empty()
+    dataTable.empty()
 
+
+
+    dataTable.table(cases[["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "severity", "geographic_setting", "case_status"]].iloc[st.session_state.pageIdx:st.session_state.pageIdx+15])
     
 
-    left, r1, right = st.columns([1,40,1])
+    left, r1, right = st.columns([1,25,1])
 
     
     with right:
@@ -112,11 +118,29 @@ with tab2:
         if st.session_state.pageIdx > 0 and st.button("←", type = "primary"):
             st.session_state.pageIdx -= 15
 
+    with r1:
+        filterArea = st.form("Filter data", clear_on_submit = False)
 
-    dataTable = st.empty()
-    dataTable.empty()
-    dataTable.table(cases[["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "severity", "geographic_setting", "case_status"]].iloc[st.session_state.pageIdx:st.session_state.pageIdx+15])
-    
+        with filterArea:
+            formattedCol = st.columns([1,4,1,4,2])
+
+            with formattedCol[0]:
+                st.write("#### SELECT")
+
+            with formattedCol[1]:
+                selectFilter = st.multiselect("", ["Patient ID", "Year", "Country", "Syndrome", "Age", "Sex", "Symptoms", "Severity", "Geographic Setting", "Case Status"], label_visibility = "collapsed")
+
+            with formattedCol[2]:
+                st.write("#### WHERE")
+
+            with formattedCol[3]:
+                specific = st.text_input("SPECIFICS", label_visibility = "collapsed")
+            
+            with formattedCol[4]:
+                filterSubmit = st.form_submit_button("Filter", use_container_width = True)
+
+                if filterSubmit:
+                    st.session_state.filters.append([selectFilter, specific])
 
         
 

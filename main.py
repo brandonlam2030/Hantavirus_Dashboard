@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import gspread, datetime
+import gspread, datetime, plotly
+import plotly.graph_objects as go
 
 gc = gspread.service_account_from_dict(st.secrets["AUTH"])
 sheet = gc.open_by_url("https://docs.google.com/spreadsheets/d/1OMYd89ViYPjpKFo28gV1dnuWBuQMuIgG5HCTZpReO7U/edit?gid=0#gid=0")
 worksheet = sheet.sheet1
+coords = sheet.worksheet("coords")
 
 title, button = st.columns([20,1])
 powerBI = ""
@@ -17,6 +19,11 @@ if "pageIdx" not in st.session_state:
 if "filters" not in st.session_state:
     st.session_state.filters = []
 
+
+if "clickedPoints" not in st.session_state:
+    st.session_state.clickedPoints = {}
+
+
 with title:
     st.title("Hantavirus Tracking and Prediction Dashboard")
 with button: 
@@ -24,15 +31,18 @@ with button:
 st.set_page_config(layout = "wide")
 
 
-tab1, tab2, tab3, tab4 = st.tabs(["Main", "Data", "Predictions", "Contact"])
+tab1, tab2, tab3, tab4 = st.tabs(["Main", "Data", "Predictions", "Report A Case"])
 
 cases = pd.DataFrame(worksheet.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "incubation_days", "severity", "hospitalized", "icu_admission", "mechanical_ventilation", "ecmo_used", "dialysis", "comorbidity", "exposure_type", "outcome", "length_of_stay_days", "blood_type", "viral_load_category", "days_to_diagnosis", "treatment_protocol", "geographic_setting", "nationality", "case_status", "sequence_id"])
 cases = cases.fillna("None")
 cases.columns = cases.iloc[0]
 cases = cases[1:].reset_index(drop = True)
 
+coordinates = pd.DataFrame(coords.get_all_values(), columns = ["country", "lat", "lon", "count"])
+coordinates = coordinates[1:].reset_index(drop = True)
+coordinates = coordinates[coordinates["count"].astype("float32") > 0]
 
-image = st.components.v1
+
 
 with tab1:
     box1, box2, box3 = st.columns(3)
@@ -54,8 +64,43 @@ with tab1:
 
 
     st.header("Progression of Hantavirus Cases (2000 - Present)")
-    st.line_chart(yearlyCounts, x = "year", y = "count", x_label = "Year", y_label = "Number of Cases")
-    image.iframe("https://app.powerbi.com/groups/me/reports/b9da4980-5c10-4295-8a3d-0d8118c8f8e2/ab6528c30b6aeaaaaa5c?experience=power-bi")
+    fig1 = go.Figure(data = go.Scatter(x = yearlyCounts["year"], y = yearlyCounts["count"]))
+    st.plotly_chart(fig1)
+    
+    globe = go.Figure(data = go.Scattergeo(
+        lon = coordinates["lon"],
+        lat = coordinates["lat"],
+        text = coordinates["country"],
+        mode = "markers",
+        marker = dict(size = coordinates["count"].astype("float32"), sizemode = "area", sizeref = 2*max(coordinates["count"].astype(int))/ (30**2), sizemin = 1,color=coordinates["count"].astype(int), colorscale = "YlOrRd", showscale = True))
+    )
+    globe.update_geos(
+        projection = dict(type = "orthographic"),
+        showcoastlines = True, coastlinecolor = "rgba(0,0,0,0.5)",
+        showland = True, landcolor = "#B4FFB4",
+        showocean = True, oceancolor = "LightSkyBlue",
+        showlakes = True, lakecolor = "LightSkyBlue",
+        showcountries=True, countrycolor="#888888",  
+
+    )
+
+    globe.update_layout(
+        title = "Mapping Cases Globally (2000-Present)",
+        geo = dict(bgcolor = "rgba(0,0,0,0)"),
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height = 800,
+        width = 1000
+    )
+
+    
+    globeClick = st.plotly_chart(globe, use_container_width = True, on_select = "rerun")
+
+    if globeClick and globeClick.selection.points:
+        st.session_state.clickedPoints = globeClick.selection.points[0]
+
+
+
 
 
 
@@ -92,19 +137,24 @@ with tab4:
             currentId = int(cases["patient_id"].iloc[-1][cases["patient_id"].iloc[-1].find("-")+1:])+1
             results = [currentId, datetime.datetime.now().year, country, "None", ageNum, sexVal, ", ".join(symptoms)]
             
-            worksheet.append_row(results)
-            st.success("Form submitted successfully!")
+            
+            if country in coordinates["country"]:
+                worksheet.append_row(results)
+                coordinates.iloc[coordinates["country"] == country, "count"] += 1
+                st.success("Form submitted successfully!")
+            else:
+                st.warning("Please enter a valid country")
 
-
-firstLoad = True
 
 with tab2:
     dataTable = st.empty()
     dataTable.empty()
+    
+    targetData = cases.copy()
+    for item in st.session_state.filters:
+        targetData = targetData[targetData[item[0]] == item[1]]
 
-
-
-    dataTable.table(cases[["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "severity", "geographic_setting", "case_status"]].iloc[st.session_state.pageIdx:st.session_state.pageIdx+15])
+    dataTable.table(targetData[["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "severity", "geographic_setting", "case_status"]].iloc[st.session_state.pageIdx:st.session_state.pageIdx+15])
     
 
     left, r1, right = st.columns([1,25,1])
@@ -128,7 +178,7 @@ with tab2:
                 st.write("#### SELECT")
 
             with formattedCol[1]:
-                selectFilter = st.multiselect("", ["Patient ID", "Year", "Country", "Syndrome", "Age", "Sex", "Symptoms", "Severity", "Geographic Setting", "Case Status"], label_visibility = "collapsed")
+                selectFilter = st.selectbox("", ["", "Patient ID", "Year", "Country", "Syndrome", "Age", "Sex", "Symptoms", "Severity", "Geographic Setting", "Case Status"], label_visibility = "collapsed")
 
             with formattedCol[2]:
                 st.write("#### WHERE")

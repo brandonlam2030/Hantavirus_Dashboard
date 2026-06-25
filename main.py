@@ -170,7 +170,6 @@ with tab4:
     with hospitalReport:
         contactForm("HR")
 
-
 with tab2:
     targetData = cases.copy()
     

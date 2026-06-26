@@ -3,18 +3,17 @@ import pandas as pd
 from sheets import coords, fieldAgentForm, hospitalForm, worksheet
 from Main import cases, coordinates
 import datetime, gspread
+from data import load_cases, load_coordinates
+
+cases = load_cases()
+coordinates = load_coordinates()
 
 fieldAgentDF = pd.DataFrame(fieldAgentForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms"])
 hospitalReportDF = pd.DataFrame(hospitalForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms"])
 
-st.write(id(cases))
-
-st.code(repr(cases["symptoms"].iloc[0]))
-
 cases["symptoms"] = cases["symptoms"].fillna("").astype(str).str.split(",")
 uniqueSymptoms = cases["symptoms"].explode().dropna().str.strip().unique().tolist()
 
-st.write(cases["symptoms"].head())
 def contactForm(id:str):
     contact = st.form(id, clear_on_submit = True)
     

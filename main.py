@@ -5,20 +5,15 @@ import plotly.express as px
 from sheets import worksheet,coords
 import numpy as np
 import news
+from data import load_cases, load_coordinates
 
+cases = load_cases()
+coordinates = load_coordinates()
 
 title, button = st.columns([20,1])
 powerBI = ""
 
 values = worksheet.get_all_values()
-
-cases = pd.DataFrame(values[1:], columns = values[0])
-
-
-coordinates = pd.DataFrame(coords.get_all_values(), columns = ["country", "lat", "lon", "count", "population"])
-coordinates = coordinates[1:].reset_index(drop = True)
-coordinates["count"] = coordinates["count"].astype(int)
-coordinates["population"] = coordinates["population"].astype(int)
 
 
 @st.cache_data(ttl = 900)

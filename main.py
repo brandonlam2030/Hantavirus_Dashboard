@@ -6,6 +6,7 @@ from sheets import worksheet,coords
 import numpy as np
 import news
 from data import load_cases, load_coordinates
+from streamlit_plotly_events import plotly_events
 
 cases = load_cases()
 coordinates = load_coordinates()
@@ -18,7 +19,10 @@ values = worksheet.get_all_values()
 
 @st.cache_data(ttl = 900)
 def get_cached_news():
-    return news.getNews()
+    results = news.getNews()
+    
+    return results[0], results[1]
+
 
 def createArticleBox(inputNews):
        
@@ -49,6 +53,8 @@ div[class*="st-key-mybox"] {
 if "clickedPoints" not in st.session_state:
     st.session_state.clickedPoints = {}
 
+if "selectCountry" not in st.session_state:
+    st.session_state.selectedCountry = None
 
 with title:
     st.title("Hantavirus Tracking and Prediction Dashboard")
@@ -68,6 +74,11 @@ groupedCountries = pd.merge(groupedCountries, coordinates[["population", "countr
 groupedCountries = groupedCountries.dropna()
 groupedCountries["case_count"] = np.log1p(groupedCountries["case_count"]/groupedCountries["population"]) * 100000
 
+case_points = cases.groupby("country").size().reset_index(name = "case_count")
+case_map = pd.merge(case_points, coordinates, on = "country", how = "left")
+case_map = case_map.dropna(subset = ["lat", "lon"])
+
+print(groupedCountries.head())
 with upperMiddleGraphs[0]:
     with st.container(border = True, key="mybox_globe"):
 
@@ -75,6 +86,7 @@ with upperMiddleGraphs[0]:
         lon = coordinates["lon"],
         lat = coordinates["lat"],
         text = coordinates["country"],
+        customdata = coordinates["country"],
         mode = "markers",
         marker = dict(size = coordinates["count"].astype("float32"), sizemode = "area", sizeref = 2*max(coordinates["count"].astype(int))/ (30**2), sizemin = 1,color=coordinates["count"].astype(int), colorscale = "YlOrRd", showscale = True)))
         
@@ -97,7 +109,18 @@ with upperMiddleGraphs[0]:
         )
 
 
-        globeClick = st.plotly_chart(globe, width = "stretch", on_select = "ignore")
+        st.plotly_chart(globe)
+
+        # if st.session_state.selectCountry:
+        #     fig = go.Figure()
+
+        #     fig.trace(go.Bar(x = groupedCountries["year"]))
+
+       
+        
+
+        
+    
 
        
 
@@ -115,16 +138,38 @@ with lowerMiddleGraphs[0]:
         yearlyCounts = cases.groupby("year").size().reset_index(name = "count")
 
 
+with lowerMiddleGraphs[1]:
+    with st.container(border = True, key = "mybox_pi"):
+        severityCounts = cases.groupby("severity").size().reset_index(name = "count")
+
+        piChart = px.pie(severityCounts, values = "count", names = "severity", title = "Case Severity", color_discrete_map = {
+            "Mild": "lightcyan",
+            "Severe": "cyan",
+            "Moderate": "royalblue",
+            "Critical": "darkblue"
+        })
+        
+        
+        piChart.update_layout(
+            plot_bgcolor = "#161b22",
+            paper_bgcolor = "#161b22"
+        )
+
+        st.plotly_chart(piChart)
+
+        
+
 with upperMiddleGraphs[1]:
+    data, count = get_cached_news()
+
+    with st.container(border = True, key = "mybox_newsCount"):
+        st.subheader("TOTAL NUMBER OF RECENT ARTICLES")
+        st.header(count)
 
     with st.container(border = True, key = "mybox_newsContainer"):
         st.subheader("RECENT HANTAVIRUS NEWS")
 
-        data = get_cached_news()
-
         for article in data[0:5]:
             createArticleBox(article)
 
-st.write(id(cases))
 
-st.code(repr(cases["symptoms"].iloc[0]))

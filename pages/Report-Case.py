@@ -8,8 +8,8 @@ from data import load_cases, load_coordinates
 cases = load_cases()
 coordinates = load_coordinates()
 
-fieldAgentDF = pd.DataFrame(fieldAgentForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms"])
-hospitalReportDF = pd.DataFrame(hospitalForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms"])
+fieldAgentDF = pd.DataFrame(fieldAgentForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "status"])
+hospitalReportDF = pd.DataFrame(hospitalForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "status"])
 
 cases["symptoms"] = cases["symptoms"].fillna("").astype(str).str.split(",")
 uniqueSymptoms = cases["symptoms"].explode().dropna().str.strip().unique().tolist()

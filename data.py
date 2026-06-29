@@ -11,3 +11,5 @@ def load_coordinates():
     coordinates["count"] = coordinates["count"].astype(int)
     coordinates["population"] = coordinates["population"].astype(int)
     return coordinates
+
+

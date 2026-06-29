@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from sheets import coords, fieldAgentForm, hospitalForm, worksheet
+from sheets import coords, fieldAgentForm, hospitalForm, smForm
 from Main import cases, coordinates
 import datetime, gspread
 from data import load_cases, load_coordinates
@@ -8,11 +8,12 @@ from data import load_cases, load_coordinates
 cases = load_cases()
 coordinates = load_coordinates()
 
-fieldAgentDF = pd.DataFrame(fieldAgentForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms"])
-hospitalReportDF = pd.DataFrame(hospitalForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms"])
+fieldAgentDF = pd.DataFrame(fieldAgentForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "status"])
+hospitalReportDF = pd.DataFrame(hospitalForm.get_all_values(), columns = ["patient_id", "year", "country", "syndrome", "age", "sex", "symptoms", "status"])
 
 cases["symptoms"] = cases["symptoms"].fillna("").astype(str).str.split(",")
 uniqueSymptoms = cases["symptoms"].explode().dropna().str.strip().unique().tolist()
+
 
 def contactForm(id:str):
     contact = st.form(id, clear_on_submit = True)
@@ -32,7 +33,7 @@ def contactForm(id:str):
         sexVal = contact.segmented_control("Sex", ["Male", "Female"])
     
     symptoms = contact.multiselect("Symptom(s) (Select all that apply)", uniqueSymptoms)
-    
+    status = contact.segmented_control("Status", ["Recovered", "Deceased", "Unwell"])
 
     submit = contact.form_submit_button("Submit")
 
@@ -49,7 +50,7 @@ def contactForm(id:str):
                 currentId = 0
             else:
                 currentId = int(currentSheet.iloc[-1])+1
-            results = [currentId, datetime.datetime.now().year, country, "None", ageNum, sexVal, ", ".join(symptoms)]
+            results = [currentId, datetime.datetime.now().year, country, "None", ageNum, sexVal, ", ".join(symptoms), status]
             
             
             if country not in coordinates["country"].values:
@@ -69,12 +70,53 @@ def contactForm(id:str):
 
                 st.success("Form submitted successfully!")
 
+
+def smReport(id:str):
+    contact = st.form(id, clear_on_submit = True)
+
+    name = contact.text_input("Name")
+    city = contact.text_input("Enter city:")
+    state = contact.text_input("Enter state:")
+    country = contact.text_input("Enter country")
+    platform = contact.selectbox("Platform", ["X", "Instagram", "Facebook", "Discord", "LinkedIn", "Youtube", "Tiktok", "Snapchat", "WhatsApp", "Reddit"])
+    user = contact.text_input("Social Media Username")
+    age = contact.number_input("Age", min_value = 1)
+    sex = contact.segmented_control("Sex", ["Male", "Female"])
+    symptoms = contact.multiselect("Symptom(s) (Select all that apply)", uniqueSymptoms)
+    status = contact.segmented_control("Status", ["Recovered", "Deceased", "Unwell"])
+    submit = contact.form_submit_button("Submit")
+
+    if submit:
+        if any(len(str(value)) == 0 for value in [name, city, state, country, platform, user, age, sex, symptoms]): st.warning("Please fill out all sections!!")
+        else:
+            results = [name,city,state,country,platform,user,age,sex,", ".join(symptoms),datetime.datetime.now().year, status]
+            
+            if country not in coordinates["country"].values:
+                
+                st.warning("Please enter a valid country")
+            else:
+                smForm.append_row(results)
+
+                rowIdx = coordinates.index[coordinates["country"] == country].tolist()[0]
+                currentCount = coordinates.loc[rowIdx, "count"] + 1
+                coordinates.loc[rowIdx, "count"] = currentCount 
+                coords.update_cell(rowIdx + 2, 4, int(currentCount))
+
+                st.success("Form submitted successfully!")
+
+
+
+st.title("Report Cases of Hantavirus")
+
 fieldAgent = st.expander("Submit field agent data")
 hospitalReport = st.expander("Report Hospital Cases")
-socialMedia = st.expander("")
+socialMedia = st.expander("Social Media Report Form")
 
 with fieldAgent:
     contactForm("FA")
 
 with hospitalReport:
     contactForm("HR")
+
+with socialMedia:
+    smReport("SM")

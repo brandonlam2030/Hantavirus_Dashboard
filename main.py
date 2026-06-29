@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from sheets import worksheet,coords
+from sheets import count, countUnwell
 import numpy as np
 import news
 from data import load_cases, load_coordinates
@@ -11,9 +11,7 @@ cases = load_cases()
 coordinates = load_coordinates()
 
 title, button = st.columns([20,1])
-powerBI = ""
-
-values = worksheet.get_all_values()
+github = ""
 
 
 @st.cache_data(ttl = 900)
@@ -30,14 +28,14 @@ def createArticleBox(inputNews):
     else:
         shortenedTitle = (" ".join(organizedTitle[0:6]) + "...")
     
-    st.button(label = f"{shortenedTitle}  -  {inputNews["source"]["name"]}", width = "stretch")
+    st.link_button(label = f"{shortenedTitle}  -  {inputNews["source"]["name"]}", url = inputNews["url"], width = "stretch")
 
 
 st.html("""
 <style>
 /* This single rule applies to ANY container containing "mybox" in its key */
 div[class*="st-key-mybox"] {
-    background-color: #161b22 !important;
+    background-color: #2c3b50 !important;
     color: white !important;
     padding: 20px;
     border-radius: 8px;
@@ -67,6 +65,18 @@ groupedCountries = cases.groupby(["country", "year"]).size().reset_index(name = 
 groupedCountries = pd.merge(groupedCountries, coordinates[["population", "country"]], on = "country", how = "left")
 groupedCountries = groupedCountries.dropna()
 groupedCountries["case_count"] = np.log1p(groupedCountries["case_count"]/groupedCountries["population"]) * 100000
+
+
+with topAnalytics[0]:
+    with st.container(border = True, key = "mybox_countCase"):
+        st.write("###### Number of Confirmed")
+        st.header(len(cases))
+        st.write("+" + str(count()) + " cases pending review")
+
+with topAnalytics[1]:
+    with st.container(border = True, key = "mybox_activeCase"):
+        st.write("###### Current Active Cases")
+        st.header(4)
 
 with upperMiddleGraphs[0]:
     with st.container(border = True, key="mybox_globe"):
@@ -107,8 +117,23 @@ with lowerMiddleGraphs[0]:
     with st.container(border = True, key="mybox_line"):
         lineChart = px.line(groupedCountries, x = "year", y = "case_count", color = "country", title = "Normalized Tracking of Cases per Country", labels = {"year":"Year", "case_count": "Normalized Case Count"})
         lineChart.update_layout(
-            plot_bgcolor = "#161b22",
-            paper_bgcolor = "#161b22"
+            plot_bgcolor = "#2c3b50",
+            paper_bgcolor = "#2c3b50",
+            title_font_color = "white",
+            title_subtitle_font_color= "white",
+            legend_font_color = "white",
+            font_color = "white",
+            legend_title_font_color = "white"
+        )
+
+        lineChart.update_xaxes(
+            title_font_color="white",  
+            tickfont_color="white"     
+        )
+
+        lineChart.update_yaxes(
+            title_font_color="white",  
+            tickfont_color="white"     
         )
         st.plotly_chart(lineChart)
 
@@ -125,6 +150,3 @@ with upperMiddleGraphs[1]:
         for article in data[0:5]:
             createArticleBox(article)
 
-st.write(id(cases))
-
-st.code(repr(cases["symptoms"].iloc[0]))

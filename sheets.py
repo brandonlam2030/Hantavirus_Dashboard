@@ -29,6 +29,6 @@ def countUnwell():
         df = pd.DataFrame(raw[1:], columns = raw[0])
         df = df.groupby("status").size().reset_index(name = "count")
         
-        count += df[df["status"] == "Unwell"]["count"]
+        count += df.loc[(df["status"] == "Unwell"), "count"].sum()
 
     return count

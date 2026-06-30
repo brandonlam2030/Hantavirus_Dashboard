@@ -6,10 +6,11 @@ from sheets import count, countUnwell
 import numpy as np
 import news
 from data import load_cases, load_coordinates
-from streamlit_plotly_events import plotly_events
+
 
 cases = load_cases()
 coordinates = load_coordinates()
+
 
 title, button = st.columns([20,1])
 github = ""
@@ -21,6 +22,7 @@ def get_cached_news():
     
     return results[0], results[1]
 
+data, numOfResponses = get_cached_news()
 
 def createArticleBox(inputNews):
        
@@ -39,7 +41,7 @@ st.html("""
 <style>
 /* This single rule applies to ANY container containing "mybox" in its key */
 div[class*="st-key-mybox"] {
-    background-color: #2c3b50 !important;
+    background-color: #accfff !important;
     color: white !important;
     padding: 20px;
     border-radius: 8px;
@@ -47,6 +49,19 @@ div[class*="st-key-mybox"] {
 }
 </style>
 """)
+
+st.markdown(
+    """
+    <style>
+    /* Force color on all levels of Streamlit headers */
+    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
+        color: #4e5b68 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 
 if "clickedPoints" not in st.session_state:
     st.session_state.clickedPoints = {}
@@ -76,20 +91,90 @@ case_points = cases.groupby("country").size().reset_index(name = "case_count")
 case_map = pd.merge(case_points, coordinates, on = "country", how = "left")
 case_map = case_map.dropna(subset = ["lat", "lon"])
 
-print(groupedCountries.head())
 
 with topAnalytics[0]:
     with st.container(border = True, key = "mybox_countCase"):
         st.write("###### Number of Confirmed")
         st.header(len(cases))
-        st.write("+" + str(count()) + " cases pending review")
+        st.write(f"##### :red[+ {str(count())} cases pending review]")
+
 
 with topAnalytics[1]:
-    with st.container(border = True, key = "mybox_activeCase"):
+    with st.container(border = True, key = "mybox_activeCase", height = "stretch"):
         st.write("###### Current Active Cases")
-        st.header(4)
+        st.header(countUnwell())
+
+
+with topAnalytics[2]:
+    with st.container(border = True, key = "mybox_newsCount", height = "stretch"):
+        st.subheader("TOTAL NUMBER OF RECENT ARTICLES")
+        st.header(numOfResponses)
+
 
 with upperMiddleGraphs[0]:
+    print("hello")
+
+        # if st.session_state.selectCountry:
+        #     fig = go.Figure()
+
+        #     fig.trace(go.Bar(x = groupedCountries["year"]))
+
+
+with lowerMiddleGraphs[0]:
+
+    with st.container(border = True, key="mybox_line"):
+        lineChart = px.line(groupedCountries, x = "year", y = "case_count", color = "country", title = "Normalized Tracking of Cases per Country", labels = {"year":"Year", "case_count": "Normalized Case Count"})
+        lineChart.update_layout(
+            plot_bgcolor = "#b0d2ff",
+            paper_bgcolor = "#b0d2ff",
+            title_font_color = "#4e5b68",
+            title_subtitle_font_color= "#4e5b68",
+            legend_font_color = "#4e5b68",
+            font_color = "#4e5b68",
+            legend_title_font_color = "#4e5b68"
+        )
+
+        lineChart.update_xaxes(
+            title_font_color="#4e5b68",  
+            tickfont_color="#4e5b68"     
+        )
+
+        lineChart.update_yaxes(
+            title_font_color="#4e5b68",  
+            tickfont_color="#4e5b68"     
+        )
+        st.plotly_chart(lineChart)
+
+        yearlyCounts = cases.groupby("year").size().reset_index(name = "count")
+
+
+with lowerMiddleGraphs[1]:
+    with st.container(border = True, key = "mybox_pi"):
+        severityCounts = cases.groupby("severity").size().reset_index(name = "count")
+
+        piChart = px.pie(severityCounts, color = "severity", values = "count", names = "severity", title = "Case Severity", color_discrete_map = {
+            "Mild": "lightcyan",
+            "Severe": "cyan",
+            "Moderate": "royalblue",
+            "Critical": "darkblue"
+        })
+        
+        
+        piChart.update_layout(
+            plot_bgcolor = "#accfff",
+            paper_bgcolor = "#b0d2ff"
+        )
+
+        st.plotly_chart(piChart)
+
+
+with upperMiddleGraphs[1]:
+    with st.container(border = True, key = "mybox_newsContainer"):
+        st.subheader("RECENT HANTAVIRUS NEWS")
+
+        for article in data[0:6]:
+            createArticleBox(article)
+
     with st.container(border = True, key="mybox_globe"):
 
         globe = go.Figure(data = go.Scattergeo(
@@ -110,91 +195,14 @@ with upperMiddleGraphs[0]:
         )
 
         globe.update_layout(
-            title = "Mapping Cases Globally (2000-Present)",
-            geo = dict(bgcolor = "rgba(0,0,0,0)"),
+            title = "Global Case Counts at a Glance",
+            geo = dict(bgcolor = "rgba(0,0,0,0)", domain=dict(x=[0, 1], y=[0, 1])),
             paper_bgcolor = "rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            height = 600,
-            width = 600
+            margin=dict(l=0, r=0, t=30, b=0),
+            height = 400,
+            width = 400
         )
 
 
         st.plotly_chart(globe)
-
-        # if st.session_state.selectCountry:
-        #     fig = go.Figure()
-
-        #     fig.trace(go.Bar(x = groupedCountries["year"]))
-
-       
-        
-
-        
-    
-
-       
-
-
-with lowerMiddleGraphs[0]:
-
-    with st.container(border = True, key="mybox_line"):
-        lineChart = px.line(groupedCountries, x = "year", y = "case_count", color = "country", title = "Normalized Tracking of Cases per Country", labels = {"year":"Year", "case_count": "Normalized Case Count"})
-        lineChart.update_layout(
-            plot_bgcolor = "#2c3b50",
-            paper_bgcolor = "#2c3b50",
-            title_font_color = "white",
-            title_subtitle_font_color= "white",
-            legend_font_color = "white",
-            font_color = "white",
-            legend_title_font_color = "white"
-        )
-
-        lineChart.update_xaxes(
-            title_font_color="white",  
-            tickfont_color="white"     
-        )
-
-        lineChart.update_yaxes(
-            title_font_color="white",  
-            tickfont_color="white"     
-        )
-        st.plotly_chart(lineChart)
-
-        yearlyCounts = cases.groupby("year").size().reset_index(name = "count")
-
-
-with lowerMiddleGraphs[1]:
-    with st.container(border = True, key = "mybox_pi"):
-        severityCounts = cases.groupby("severity").size().reset_index(name = "count")
-
-        piChart = px.pie(severityCounts, values = "count", names = "severity", title = "Case Severity", color_discrete_map = {
-            "Mild": "lightcyan",
-            "Severe": "cyan",
-            "Moderate": "royalblue",
-            "Critical": "darkblue"
-        })
-        
-        
-        piChart.update_layout(
-            plot_bgcolor = "#161b22",
-            paper_bgcolor = "#161b22"
-        )
-
-        st.plotly_chart(piChart)
-
-        
-
-with upperMiddleGraphs[1]:
-    data, count = get_cached_news()
-
-    with st.container(border = True, key = "mybox_newsCount"):
-        st.subheader("TOTAL NUMBER OF RECENT ARTICLES")
-        st.header(count)
-
-    with st.container(border = True, key = "mybox_newsContainer"):
-        st.subheader("RECENT HANTAVIRUS NEWS")
-
-        for article in data[0:5]:
-            createArticleBox(article)
-
-st.write(id(cases))

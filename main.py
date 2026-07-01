@@ -6,7 +6,9 @@ from sheets import count, countUnwell
 import numpy as np
 import news
 from data import load_cases, load_coordinates
-
+import pydeck as pdk
+import matplotlib as mpl
+import matplotlib.colors as mcolors
 
 cases = load_cases()
 coordinates = load_coordinates()
@@ -110,14 +112,53 @@ with topAnalytics[2]:
         st.subheader("TOTAL NUMBER OF RECENT ARTICLES")
         st.header(numOfResponses)
 
+norm = mcolors.Normalize(vmin=0, vmax=coordinates["count"].max())
+cmap = mpl.colormaps["YlOrRd"]   # replaces cm.get_cmap("YlOrRd")
+
+coordinates["color"] = coordinates["count"].apply(
+    lambda c: [int(x*255) for x in cmap(norm(c))[:3]] + [200]
+)
+
 
 with upperMiddleGraphs[0]:
-    print("hello")
 
-        # if st.session_state.selectCountry:
-        #     fig = go.Figure()
+    viewState = pdk.ViewState(
+        latitude = 0,
+        longitude = 0,
+        zoom = 1,
+        min_zoom = 1,
+        pitch = 0,
+        bearing = 0
+    )
 
-        #     fig.trace(go.Bar(x = groupedCountries["year"]))
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data = coordinates,
+        get_position = ["lon", "lat"],
+        get_radius = "count",
+        radius_scale = 200,
+        get_radius_min_pixels = 4,
+        pickable = True,
+        get_fill_color= "color",
+        auto_highlight = True
+    )
+    
+    mapView = pdk.View(
+        type="MapView", 
+        controller=True,
+        wrap_longitude=False,  
+        repeat=False          
+    )
+    
+    worldView = pdk.Deck(
+        initial_view_state = viewState,
+        layers = [layer],
+        map_style = "light",
+        views = [mapView],
+        tooltip = {"text": "{country}\nNumber of Cases to Date: {count}\nPopulation Size: {population}\n"}
+    )
+    
+    st.pydeck_chart(worldView)
 
 
 with lowerMiddleGraphs[0]:

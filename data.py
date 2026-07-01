@@ -8,8 +8,12 @@ def load_cases():
 def load_coordinates():
     coordinates = pd.DataFrame(coords.get_all_values(), columns=["country", "lat", "lon", "count", "population"])
     coordinates = coordinates[1:].reset_index(drop=True)
-    coordinates["count"] = coordinates["count"].astype(int)
+    coordinates["count"] = coordinates["count"].astype("float32")
     coordinates["population"] = coordinates["population"].astype(int)
+    coordinates["lat"] = coordinates["lat"].astype("float32")
+    coordinates["lon"] = coordinates["lon"].astype("float32")
+    coordinates = coordinates[coordinates["count"] > 0]
+    
     return coordinates
 
 

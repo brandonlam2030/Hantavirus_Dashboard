@@ -63,10 +63,6 @@ def contactForm(id:str):
                 elif id == "HR":
                     hospitalForm.append_row(results)
 
-                rowIdx = coordinates.index[coordinates["country"] == country].tolist()[0]
-                currentCount = coordinates.loc[rowIdx, "count"] + 1
-                coordinates.loc[rowIdx, "count"] = currentCount 
-                coords.update_cell(rowIdx + 2, 4, int(currentCount))
 
                 st.success("Form submitted successfully!")
 
@@ -96,11 +92,6 @@ def smReport(id:str):
                 st.warning("Please enter a valid country")
             else:
                 smForm.append_row(results)
-
-                rowIdx = coordinates.index[coordinates["country"] == country].tolist()[0]
-                currentCount = coordinates.loc[rowIdx, "count"] + 1
-                coordinates.loc[rowIdx, "count"] = currentCount 
-                coords.update_cell(rowIdx + 2, 4, int(currentCount))
 
                 st.success("Form submitted successfully!")
 

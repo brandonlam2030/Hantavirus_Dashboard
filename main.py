@@ -13,7 +13,7 @@ import matplotlib.colors as mcolors
 cases = load_cases()
 coordinates = load_coordinates()
 
-tab1, tab2, tab3 = st.tabs(["Home", "Predictions", "Report-Case"])
+tab1, tab2, tab3, tab4 = st.tabs(["Home", "Predictions", "Report-Case", "Details"])
 
 github = ""
 
@@ -38,6 +38,29 @@ def createArticleBox(inputNews):
     
     st.link_button(label = f"{shortenedTitle}  -  {inputNews["source"]["name"]}", url = inputNews["url"], width = "stretch")
 
+st.markdown("""
+<style>
+/* Text input */
+div[data-baseweb="input"] > div {
+    background-color: white !important;
+}
+
+/* Number input */
+div[data-baseweb="input"] input {
+    background-color: white !important;
+}
+
+/* Selectbox */
+div[data-baseweb="select"] > div {
+    background-color: white !important;
+}
+
+/* Text area */
+textarea {
+    background-color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
 st.html("""
 <style>
@@ -157,53 +180,50 @@ with tab1:
         
         st.pydeck_chart(worldView)
 
+        graphs = st.columns(2)
+        with graphs[0]:
+            with st.container(border = True, key="mybox_line"):
+                lineChart = px.line(groupedCountries, x = "year", y = "case_count", color = "country", title = "Normalized Tracking of Cases per Country", labels = {"year":"Year", "case_count": "Normalized Case Count"})
+                lineChart.update_layout(
+                    plot_bgcolor = "#b0d2ff",
+                    paper_bgcolor = "#b0d2ff",
+                    title_font_color = "#4e5b68",
+                    title_subtitle_font_color= "#4e5b68",
+                    legend_font_color = "#4e5b68",
+                    font_color = "#4e5b68",
+                    legend_title_font_color = "#4e5b68"
+                )
 
-    with lowerMiddleGraphs[0]:
+                lineChart.update_xaxes(
+                    title_font_color="#4e5b68",  
+                    tickfont_color="#4e5b68"     
+                )
 
-        with st.container(border = True, key="mybox_line"):
-            lineChart = px.line(groupedCountries, x = "year", y = "case_count", color = "country", title = "Normalized Tracking of Cases per Country", labels = {"year":"Year", "case_count": "Normalized Case Count"})
-            lineChart.update_layout(
-                plot_bgcolor = "#b0d2ff",
-                paper_bgcolor = "#b0d2ff",
-                title_font_color = "#4e5b68",
-                title_subtitle_font_color= "#4e5b68",
-                legend_font_color = "#4e5b68",
-                font_color = "#4e5b68",
-                legend_title_font_color = "#4e5b68"
-            )
+                lineChart.update_yaxes(
+                    title_font_color="#4e5b68",  
+                    tickfont_color="#4e5b68"     
+                )
+                st.plotly_chart(lineChart)
 
-            lineChart.update_xaxes(
-                title_font_color="#4e5b68",  
-                tickfont_color="#4e5b68"     
-            )
+                
+                with graphs[1]:
+                    with st.container(border = True, key = "mybox_pi"):
+                        severityCounts = cases.groupby("severity").size().reset_index(name = "count")
 
-            lineChart.update_yaxes(
-                title_font_color="#4e5b68",  
-                tickfont_color="#4e5b68"     
-            )
-            st.plotly_chart(lineChart)
+                        piChart = px.pie(severityCounts, color = "severity", values = "count", names = "severity", title = "Case Severity", color_discrete_map = {
+                            "Mild": "lightcyan",
+                            "Severe": "cyan",
+                            "Moderate": "royalblue",
+                            "Critical": "darkblue"
+                        })
+                        
+                        
+                        piChart.update_layout(
+                            plot_bgcolor = "#accfff",
+                            paper_bgcolor = "#b0d2ff"
+                        )
 
-            yearlyCounts = cases.groupby("year").size().reset_index(name = "count")
-
-
-    with lowerMiddleGraphs[1]:
-        with st.container(border = True, key = "mybox_pi"):
-            severityCounts = cases.groupby("severity").size().reset_index(name = "count")
-
-            piChart = px.pie(severityCounts, color = "severity", values = "count", names = "severity", title = "Case Severity", color_discrete_map = {
-                "Mild": "lightcyan",
-                "Severe": "cyan",
-                "Moderate": "royalblue",
-                "Critical": "darkblue"
-            })
-            
-            
-            piChart.update_layout(
-                plot_bgcolor = "#accfff",
-                paper_bgcolor = "#b0d2ff"
-            )
-
-            st.plotly_chart(piChart)
+                        st.plotly_chart(piChart)
 
 
     with upperMiddleGraphs[1]:
@@ -238,7 +258,7 @@ with tab1:
                 paper_bgcolor = "rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
                 margin=dict(l=0, r=0, t=30, b=0),
-                height = 400,
+                height = 500,
                 width = 400
             )
 
@@ -349,3 +369,7 @@ with tab3:
 
     with socialMedia:
         smReport("SM")
+
+
+with tab4:
+    st.header("Details about the Hantavirus")

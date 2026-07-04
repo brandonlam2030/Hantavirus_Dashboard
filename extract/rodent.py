@@ -1,5 +1,6 @@
-import neonutilities as nu
+import pandas as pd
 
-path = "C:/Users/brand/Hantavirus_Dashboard/data/NEON_hanta-pathogens-rodent/NEON_hanta-pathogens-rodent"
+path = "data/mam_pertrapnight.csv"
 
-nu.stack_by_table(path)
+rodentDF = pd.read_csv(path)
+

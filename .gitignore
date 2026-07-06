@@ -163,6 +163,7 @@ cython_debug/
 .streamlit/secrets.toml
 
 *.csv
+data/*.csv
 
 #old data tab
 TempTab.py

@@ -4,16 +4,18 @@ import plotly.graph_objects as go
 import plotly.express as px
 from sheets import count, countUnwell, coords, fieldAgentForm, hospitalForm, smForm
 import numpy as np
-import news, datetime, gspread
+import news, datetime
 from data import load_cases, load_coordinates
 import pydeck as pdk
 import matplotlib as mpl
 import matplotlib.colors as mcolors
+from model.aggregatedData import getDF
 
 cases = load_cases()
 coordinates = load_coordinates()
+rodent = getDF()
 
-tab1, tab2, tab3, tab4 = st.tabs(["Home", "Predictions", "Report-Case", "Details"])
+tab1, tab2, tab3, tab4 = st.tabs(["Home", "Predictions", "Report Human Cases", "Details"])
 
 github = ""
 
@@ -116,15 +118,17 @@ with tab1:
     
     with topAnalytics[0]:
         with st.container(border = True, key = "mybox_countCase", height = "stretch"):
-            st.write("###### Number of Confirmed")
-            st.header(len(cases))
+            st.write("###### Number of Rodent Hantavirus Carriers")
+            st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
             st.write(f"##### :red[+ {str(count())} cases pending review]")
 
 
     with topAnalytics[1]:
         with st.container(border = True, key = "mybox_activeCase", height = "stretch"):
             st.write("###### Current Active Cases")
-            st.header(countUnwell())
+            st.header(f"{str(count())} active cases")
+            time = datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
+            st.write(f"##### :red[Last updated on {time[0:10]} at {time[10:]}]")
 
 
     with topAnalytics[2]:
@@ -355,7 +359,7 @@ with tab3:
 
 
 
-    st.title("Report Cases of Hantavirus")
+    st.title("Report Human Cases of the Hantavirus")
 
     fieldAgent = st.expander("Submit field agent data")
     hospitalReport = st.expander("Report Hospital Cases")

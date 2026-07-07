@@ -118,9 +118,12 @@ with tab1:
     
     with topAnalytics[0]:
         with st.container(border = True, key = "mybox_countCase", height = "stretch"):
-            st.write("###### Number of Rodent Hantavirus Carriers")
-            st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
-            st.write(f"##### :red[+ {str(count())} cases pending review]")
+            st.write("###### Percent of rodent exposure cases")
+            st.header(f"{len(cases.loc[cases["exposure_type"] == "Cleaning rodent-infested area"])/len(cases)*100}%")
+            st.write(f"##### :red[out of {len(cases)} cases]")
+            # st.write("###### Number of Rodent Hantavirus Carriers")
+            # st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
+            # st.write(f"##### :red[+ {str(count())} cases pending review]")
 
 
     with topAnalytics[1]:

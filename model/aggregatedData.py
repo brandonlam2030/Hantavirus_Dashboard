@@ -1,13 +1,9 @@
 import pandas as pd
 
-def getDF():
-    return pd.read_csv("aggregatedData.csv")
+path = ["data/bloodtest.csv", "data/combined_climate.csv", "data/precipitation.csv"]
 
-
-path = ["data/bloodtest.csv", "data/combined_climate.csv", "data/filtered_precip.csv"]
-
-columns = {path[0]: [["bloodSampleID", "testPathogenName","testResult"], "bloodSampleID"], path[1]: [["date", "lat", "lon", "T2M_MAX", "T2M_MIN"], ["decimalLatitude", "decimalLongitude", "collectDate"], ["lat","lon", "date"]],
-           path[2]: [["collectDate", "precipbulk"], "collectDate"]}
+columns = {path[0]: [["bloodSampleID", "testPathogenName","testResult"], "bloodSampleID"], path[1]: [["collectDate", "decimalLongitude", "decimalLatitude", "T2M_MAX", "T2M_MIN"], ["decimalLatitude", "decimalLongitude", "collectDate"]]
+           , path[2]: [["siteID","decimalLongitude", "decimalLatitude","collectDate","precipBulk"], ["siteID","collectDate"]]}
 
 parent = pd.read_csv("data/rodent_with_ndvi.csv")
 parent = parent[["uid", "nightuid", "namedLocation", "siteID", "decimalLatitude", "decimalLongitude", "coordinateUncertainty", "collectDate", "ndvi", "bloodSampleID"]]
@@ -15,31 +11,35 @@ parent['decimalLatitude'] = parent['decimalLatitude'].round(3)
 parent['decimalLongitude'] = parent['decimalLongitude'].round(3)
 
 
+
 for file in path:
     df = pd.read_csv(file)
+    
+    if file == path[2] or file == path[1]:
+        df["decimalLatitude"] = df["decimalLatitude"].round(3)
+        df["decimalLongitude"] = df["decimalLongitude"].round(3)
+    parent = pd.merge(parent, df[columns[file][0]], on = columns[file][1], how = "left")
 
-    if len(columns[file]) > 2:
-        parent = pd.merge(parent,df[columns[file][0]], left_on = columns[file][1], right_on = columns[file][2], how = "left")
-    else:
-        parent = pd.merge(parent, df[columns[file][0]], on = columns[file][1], how = "left")
 
-parent["testResult"] = parent["testResult"].fillna("Not Tested")
-parent["testPathogenName"] = parent["testPathogenName"].fillna("N/A")
 parent = parent.drop(columns=['lat', 'lon', 'date'], errors='ignore')
-parent["T2M_MAX"] = parent["T2M_MAX"].fillna("N/A")
-parent["T2M_MIN"] = parent["T2M_MIN"].fillna("N/A")
-parent["precipbulk"] = parent["precipbulk"].fillna("N/A")
+parent = parent.sort_values(["siteID", "collectDate"])
 
-parent["ndvi_lag3"] = parent["ndvi"].shift(3)
-parent["ndvi_lag5"] = parent["ndvi"].shift(5) 
-parent["ndvi_lag6"] = parent["ndvi"].shift(6)  
+for col in ["ndvi", "T2M_MAX","T2M_MIN", "precipBulk"]:
+    for w in [7,14,30,60]:
+        if col == "ndvi":
+            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].shift(w)
+        elif col == "T2M_MAX":
+            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].transform(lambda x: x.rolling(window = w).mean())
+        elif col == "T2M_MIN":
+            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].transform(lambda x: x.rolling(window = w).mean())
+        else:
+            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].transform(lambda x: x.rolling(window = w).sum())
+        
 
-parent["T2M_MAX_lag1"] = parent["T2M_MAX"].shift(1)
-parent["T2M_MAX_lag5"] = parent["T2M_MAX"].shift(5)
-parent["T2M_MAX_lag6"] = parent["T2M_MAX"].shift(6)
-
-print(parent["collectDate"].head(5))
-print(parent["collectDate"].tail(5))
+parent = parent.dropna(subset = ["ndvi_lag7","ndvi_lag14","ndvi_lag30","ndvi_lag60","T2M_MAX_lag7","T2M_MAX_lag14","T2M_MAX_lag30","T2M_MAX_lag60","T2M_MIN_lag7","T2M_MIN_lag14","T2M_MIN_lag30","T2M_MIN_lag60","precipBulk_lag7","precipBulk_lag14","precipBulk_lag30","precipBulk_lag60"])
+rodentCount = parent.groupby(["siteID", "collectDate"]).size().reset_index(name = "count")
+parent = parent.merge(rodentCount, how = "left", on = ["siteID", "collectDate"])
+parent["count"] = parent["count"].fillna(0)
 parent.to_csv("aggregatedData.csv", index = False)
 
 

@@ -9,11 +9,12 @@ from data import load_cases, load_coordinates
 import pydeck as pdk
 import matplotlib as mpl
 import matplotlib.colors as mcolors
-from model.aggregatedData import getDF
+
+
 
 cases = load_cases()
 coordinates = load_coordinates()
-rodent = getDF()
+
 
 tab1, tab2, tab3, tab4 = st.tabs(["Home", "Predictions", "Report Human Cases", "Details"])
 
@@ -118,9 +119,9 @@ with tab1:
     
     with topAnalytics[0]:
         with st.container(border = True, key = "mybox_countCase", height = "stretch"):
-            st.write("###### Percent of rodent exposure cases")
-            st.header(f"{len(cases.loc[cases["exposure_type"] == "Cleaning rodent-infested area"])/len(cases)*100}%")
-            st.write(f"##### :red[out of {len(cases)} cases]")
+            st.write("Number exposure cases")
+            st.header(f"10000")
+            st.write(f"##### :red[+4 pending cases]")
             # st.write("###### Number of Rodent Hantavirus Carriers")
             # st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
             # st.write(f"##### :red[+ {str(count())} cases pending review]")

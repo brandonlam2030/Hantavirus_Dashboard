@@ -3,61 +3,80 @@ import pandas as pd
 import numpy as np
 from scipy.optimize import curve_fit
 
-rodentPopBC = joblib.load("model/rodentPopBC.pkl")
-og = pd.read_csv("data/aggregatedData.csv")
+momentum = joblib.load("model/rodentMomentum.pkl")
 data = pd.read_csv("model/layerData/layer1.csv")
+bloodtest = pd.read_csv("data/bloodtest.csv")
+aggregated = pd.read_csv("data/aggregatedData.csv")
 
-og = og.merge(data["collect"])
+data["collectDate"] = pd.to_datetime(data["collectDate"])
+aggregated["collectDate"] = pd.to_datetime(aggregated["collectDate"])
+bloodtest["collectDate"] = pd.to_datetime(bloodtest["collectDate"])
 
-og = og.dropna(subset = ["testPathogenName"]).reset_index()
-train = og.groupby(["siteID", "collectDate"])["testResult"].agg(
+raw_counts = aggregated[["siteID", "collectDate", "count", "prevCount"]].copy()
+raw_counts["collectDate"] = pd.to_datetime(raw_counts["collectDate"])
+
+data = data.drop(columns=["count"], errors="ignore")
+data = data.merge(raw_counts, on=["siteID", "collectDate"], how="left")
+
+data = data.merge(bloodtest[["collectDate", "siteID", "testPathogenName", "testResult"]], how = "left", on = ["collectDate","siteID"])
+data = data.fillna(value = {"numPositive": 0})
+
+
+data = data.dropna(subset = ["testPathogenName"]).reset_index()
+train = data.groupby(["siteID", "collectDate"])["testResult"].agg(
     totalRecords = "count",
     numPositive = lambda x: (x == "Positive").sum()
 )
 
 train["percent"] = train["numPositive"]/train["totalRecords"]
 
-totalPopulation = og.groupby(["siteID","collectDate"]).size().reset_index(name = "population")
+totalPopulation = data[["siteID","collectDate", "count"]].drop_duplicates()
+train = train.merge(totalPopulation, on = ["siteID","collectDate"], how = "left")
 
-bloodSamples = og[og["testResult"] == "Positive"].groupby(["siteID", "collectDate"])["testResult"].count().reset_index()
-bloodSamples = bloodSamples.rename(columns = {"testResult":"numPositive"})
-totalPopulation = totalPopulation.merge(bloodSamples, how = "left", on = ["siteID","collectDate"])
-totalPopulation = totalPopulation.fillna(value = {"numPositive":0})
-
+print(totalPopulation)
 results = []
 def log_curve(t, K, r, t0):
     return K / (1 + np.exp(-r * (t - t0)))
 
-totalPopulation = totalPopulation[["siteID", "collectDate","numPositive", "population"]]
 
-for site, group in totalPopulation.groupby("siteID"):
+for site, group in train.groupby("siteID"):
     if len(group) < 5 or group["numPositive"].sum() == 0: continue
 
-    sitePop = group["population"].cumsum()
+    sitePop = group["count"]
     numOfPos = group["numPositive"].cumsum()
-    t = (pd.to_datetime(group["collectDate"]) - pd.to_datetime(group["collectDate"].min())).dt.days.values
+    t = (pd.to_datetime(group["collectDate"]) - (group["collectDate"].min())).dt.days.values
+    t = t / 30
 
     try:
-        k, _ = curve_fit(log_curve, t, sitePop, p0 = [max(sitePop), .1, np.median(t)], bounds = ([0,0,0],[np.inf, 1.0, max(t)]))
-        r,_ = curve_fit(log_curve, t, numOfPos, p0 = [max(numOfPos), .1, np.median(t)], bounds = ([0,0,0],[np.inf, 1.0, max(t)]))
+        k, _ = curve_fit(log_curve, t, sitePop, p0 = [max(sitePop), .1, np.median(t)], bounds = ([0,0,0],[np.inf, .3, max(t)]))
+        r,_ = curve_fit(log_curve, t, numOfPos, p0 = [max(numOfPos), .1, np.median(t)], bounds = ([0,0,0],[np.inf, .3, max(t)]))
 
         results.append({"r": r[1], "k": k[0], "siteID": site})
 
     except RuntimeError:    
         print(f"Site {site} failed to converge.")
 
+print(results)
 
 risks = pd.DataFrame()
-siteFeatures = [col for col in data.columns if col.startswith("siteID_")]
+data["predictedPopulation"] = np.nan
+
+data['logPrevCount'] = np.log1p(data['prevCount'])
+data["predictedPopulation"] = np.expm1(momentum.predict(data[["logPrevCount"]]))
 
 for result in results:
     site = result["siteID"]
     rate = result["r"]
     cap = result["k"]
 
-    
-    if f"siteID_{site}" in siteFeatures:
-        target = data[data["siteID"] == f"siteID_{site}"]
-        expectedRate = rate * (1 + data[""])
-    
+    mask = data["siteID"] == site
+    data.loc[mask, "expectedRate"] = rate * (1 + data.loc[mask, "predictedPopulation"] / cap)
+
+final = data[["siteID", "collectDate", "count", "prevCount", "predictedPopulation", "expectedRate"]]
+final = final.drop_duplicates()
+
+print(data["expectedRate"])
+final.to_csv("model/layerData/layer2.csv", index = False)
+print("Layer 2 data successfully exported!")
+
 

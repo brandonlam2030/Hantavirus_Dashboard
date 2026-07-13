@@ -1,56 +1,83 @@
 import pandas as pd
+import numpy as np
 
 
+path = ["data/bloodtest.csv"]
 
-path = ["data/bloodtest.csv", "data/combined_climate.csv", "data/precipitation.csv"]
-
-columns = {path[0]: [["bloodSampleID", "testPathogenName","testResult"], "bloodSampleID"], path[1]: [["collectDate", "decimalLongitude", "decimalLatitude", "T2M_MAX", "T2M_MIN"], ["decimalLatitude", "decimalLongitude", "collectDate"]]
-           , path[2]: [["siteID","collectDate","precipBulk"], ["siteID","collectDate"]]}
+columns = {path[0]: [["bloodSampleID", "testPathogenName","testResult"], "bloodSampleID"]}
 
 parent = pd.read_csv("data/rodent_with_ndvi.csv")
 parent = parent[["uid", "nightuid", "namedLocation", "siteID", "decimalLatitude", "decimalLongitude", "coordinateUncertainty", "collectDate", "ndvi", "bloodSampleID"]]
 parent['decimalLatitude'] = parent['decimalLatitude'].round(3)
 parent['decimalLongitude'] = parent['decimalLongitude'].round(3)
 
+climate = pd.read_csv("data/combined_climate.csv")
+climate["decimalLatitude"] = climate["decimalLatitude"].round(3)
+climate["decimalLongitude"] = climate["decimalLongitude"].round(3)
+climate["collectDate"] = pd.to_datetime(climate["collectDate"], format="%Y-%m-%d")
 
+
+site_coords = parent[["siteID", "decimalLatitude", "decimalLongitude"]].drop_duplicates()
+climate = climate.merge(site_coords, on=["decimalLatitude", "decimalLongitude"], how="left")
+
+climate = climate.sort_values(["siteID", "collectDate"]).set_index("collectDate")
+
+for w in [14, 30, 60, 120]:
+    climate[f"T2M_MAX_lag{w}"] = climate.groupby("siteID")["T2M_MAX"].transform(lambda x: x.rolling(f"{w}D").mean())
+    climate[f"T2M_MIN_lag{w}"] = climate.groupby("siteID")["T2M_MIN"].transform(lambda x: x.rolling(f"{w}D").mean())
+    climate[f"precipBulk_lag{w}"] = climate.groupby("siteID")["PRECTOTCORR"].transform(lambda x: x.rolling(f"{w}D").sum())
+
+climate = climate.reset_index()
 
 for file in path:
     df = pd.read_csv(file)
     print(file)
-    if file == path[2] or file == path[1]:
-        df["decimalLatitude"] = df["decimalLatitude"].round(3)
-        df["decimalLongitude"] = df["decimalLongitude"].round(3)
     parent = pd.merge(parent, df[columns[file][0]], on = columns[file][1], how = "left")
 
 
 parent = parent.drop(columns=['lat', 'lon', 'date'], errors='ignore')
 parent = parent.sort_values(["siteID", "collectDate"])
 
-for col in ["ndvi", "T2M_MAX","T2M_MIN", "precipBulk"]:
-    for w in [7,14,30,60]:
-        if col == "ndvi":
-            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].shift(w)
-        elif col == "T2M_MAX":
-            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].transform(lambda x: x.rolling(window = w).mean())
-        elif col == "T2M_MIN":
-            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].transform(lambda x: x.rolling(window = w).mean())
-        else:
-            parent[f"{col}_lag{w}"] = parent.groupby("siteID")[col].transform(lambda x: x.rolling(window = w).sum())
+daily = parent.groupby(["siteID", "collectDate"], as_index=False).agg({
+    "ndvi": "mean",
+})
+
+daily["count"] = parent.groupby(["siteID","collectDate"]).size().values
+daily = daily.sort_values(["siteID", "collectDate"])
+
+visits_per_site = daily.groupby("siteID").size()
+print(visits_per_site.sort_values())
+daily["collectDate"] = pd.to_datetime(daily["collectDate"], format = "%Y-%m-%d")
+daily = daily.set_index("collectDate")
+
+
+for w in [14, 30, 60, 120]:
+    
+        daily[f"ndvi_lag{w}"] = daily.groupby("siteID")["ndvi"].transform(
+            lambda x: x.rolling(f"{w}D").mean()
+        )
         
+daily = daily.reset_index()
+daily = daily.dropna(subset=[c for c in daily.columns if "_lag" in c])
+daily["prevCount"] = daily.groupby("siteID")["count"].shift(1)
+daily = daily[daily["prevCount"].notna()]
+daily["true_percGrowth"] = np.log1p(daily["count"]) - np.log1p(daily["prevCount"])
 
-parent = parent.dropna(subset = ["ndvi_lag7","ndvi_lag14","ndvi_lag30","ndvi_lag60","T2M_MAX_lag7","T2M_MAX_lag14","T2M_MAX_lag30","T2M_MAX_lag60","T2M_MIN_lag7","T2M_MIN_lag14","T2M_MIN_lag30","T2M_MIN_lag60","precipBulk_lag7","precipBulk_lag14","precipBulk_lag30","precipBulk_lag60"])
-rodentCount = parent.groupby(["siteID", "collectDate"]).size().reset_index(name = "count")
-parent = parent.merge(rodentCount, how = "left", on = ["siteID", "collectDate"])
-parent["count"] = parent["count"].fillna(0)
+daily = daily.sort_values("collectDate")
+climate = climate.sort_values("collectDate")
 
-daily_counts = parent.groupby(["siteID", "collectDate"])["count"].first().reset_index()
-daily_counts = daily_counts.sort_values(by=["siteID", "collectDate"])
-daily_counts["true_percGrowth"] = daily_counts.groupby("siteID")["count"].diff().fillna(0)
-parent = parent.merge(daily_counts[["siteID", "collectDate", "true_percGrowth"]], on=["siteID", "collectDate"], how="left")
+lag_cols = [c for c in climate.columns if "_lag" in c]
 
-parent["collectDate"] = pd.to_datetime(parent["collectDate"], format = "%Y-%m-%d")
+daily = pd.merge_asof(
+    daily,
+    climate[["siteID", "collectDate"] + lag_cols],
+    on="collectDate",
+    by="siteID",
+    direction="backward"
+)
 
-parent.to_csv("data/aggregatedData.csv", index = False)
+
+daily.to_csv("data/aggregatedData.csv", index = False)
 
 
 

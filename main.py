@@ -9,15 +9,12 @@ from data import load_cases, load_coordinates
 import pydeck as pdk
 import matplotlib as mpl
 import matplotlib.colors as mcolors
+from streamlit_float import *
 
-
-
+float_init()
 cases = load_cases()
 coordinates = load_coordinates()
-
-
 tab1, tab2, tab3, tab4 = st.tabs(["Home", "Predictions", "Report Human Cases", "Details"])
-
 github = ""
 
 
@@ -91,16 +88,33 @@ st.markdown(
 )
 
 
+st.markdown("""
+    <style>
+    button[kind="secondary"] {
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+
 if "clickedPoints" not in st.session_state:
     st.session_state.clickedPoints = {}
 
 if "selectCountry" not in st.session_state:
     st.session_state.selectCountry = None
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-st.set_page_config(layout = "wide")
+if "showChat" not in st.session_state:
+    st.session_state.showChat = False
 
-        
+st.set_page_config(layout = "wide")     
 groupedCountries = cases.groupby(["country", "year"]).size().reset_index(name = "case_count")
 groupedCountries = pd.merge(groupedCountries, coordinates[["population", "country"]], on = "country", how = "left")
 groupedCountries = groupedCountries.dropna()
@@ -109,6 +123,22 @@ groupedCountries["case_count"] = np.log1p(groupedCountries["case_count"]/grouped
 case_points = cases.groupby("country").size().reset_index(name = "case_count")
 case_map = pd.merge(case_points, coordinates, on = "country", how = "left")
 case_map = case_map.dropna(subset = ["lat", "lon"])
+
+bubble = st.container()
+with bubble:
+    if st.button("💬", key = "chat_bubble"):
+        st.session_state.showChat = not st.session_state.showChat
+
+    bubble.float("position: fixed; bottom: 15px; left: 20px; z-index: 9999;")
+
+if st.session_state.showChat:
+
+    chatWindow = st.container(border = True)
+    with chatWindow:
+        st.write('helloworld')
+
+    chatWindow.float("position: fixed; bottom: 80px; left: 20px; width: 300px; height: 400px; z-index: 9999; background-color: white;")
+
 
 with tab1:
     st.title("Hantavirus Tracking and Prediction Dashboard")
@@ -381,3 +411,4 @@ with tab3:
 
 with tab4:
     st.header("Details about the Hantavirus")
+

@@ -10,13 +10,14 @@ import pydeck as pdk
 import matplotlib as mpl
 import matplotlib.colors as mcolors
 from streamlit_float import *
+from langchain_learn.first import getAgent, invokeWithRetry
 
 float_init()
 cases = load_cases()
 coordinates = load_coordinates()
 tab1, tab2, tab3, tab4 = st.tabs(["Home", "Predictions", "Report Human Cases", "Details"])
 github = ""
-
+agent = getAgent()
 
 @st.cache_data(ttl = 900)
 def get_cached_news():
@@ -90,7 +91,7 @@ st.markdown(
 
 st.markdown("""
     <style>
-    button[kind="secondary"] {
+    div[class*="st-key-chat_bubble"] button {
         border-radius: 50%;
         width: 60px;
         height: 60px;
@@ -129,15 +130,49 @@ with bubble:
     if st.button("💬", key = "chat_bubble"):
         st.session_state.showChat = not st.session_state.showChat
 
-    bubble.float("position: fixed; bottom: 15px; left: 20px; z-index: 9999;")
+    bubble.float("position: fixed; bottom: 35px; left: 20px; z-index: 9999; height:40px")
 
 if st.session_state.showChat:
 
-    chatWindow = st.container(border = True)
-    with chatWindow:
-        st.write('helloworld')
+    chatMessages = st.container(border = True, key = "chatMessages")
+    
+    with chatMessages:
+        if st.session_state.messages:
+            for message in st.session_state.messages:
+                st.chat_message(message["role"]).markdown(message["content"])
 
-    chatWindow.float("position: fixed; bottom: 80px; left: 20px; width: 300px; height: 400px; z-index: 9999; background-color: white;")
+    chatMessages.float(
+        "position: fixed; bottom: 145px; left: 20px; width: 500px; height: 310px; "
+        "overflow-y: auto; z-index: 9999; background-color: white; "
+        "border-radius: 8px; padding: 8px;"
+    )
+        
+    prompt = st.chat_input("Type Here")
+
+
+    st.markdown("""
+        <style>
+        div[data-testid="stChatInput"] {
+            position: fixed !important;
+            bottom: 85px !important;
+            left: 20px !important;
+            width: 500px !important;
+            z-index: 10000 !important;
+        }
+        </style>
+    """, unsafe_allow_html = True)
+
+    if prompt:
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+      
+        inputPrompt = {"messages":[{"role":"user", "content":prompt}]}
+        response = invokeWithRetry(agent, inputPrompt)
+
+        st.chat_message("assistant").markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.rerun()
+    
 
 
 with tab1:

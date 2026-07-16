@@ -11,6 +11,32 @@ import matplotlib as mpl
 import matplotlib.colors as mcolors
 from streamlit_float import *
 from langchain_learn.first import getAgent, invokeWithRetry
+import requests
+
+otherGeojson = requests.get(
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
+).json()
+
+usGeojson = {
+    "type": "FeatureCollection",
+    "features": [
+        f for f in otherGeojson["features"]
+        if f["properties"].get("ADMIN") == "United States of America"
+    ]
+}
+
+otherGeojson = {
+    "type": "FeatureCollection",
+    "features": [
+        f for f in otherGeojson["features"]
+        if f["properties"].get("ADMIN") != "United States of America"
+    ]
+}
+
+usStatesGeojson = requests.get(
+    "https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json"
+).json()
+
 
 float_init()
 cases = load_cases()
@@ -101,10 +127,16 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+    <style>
+    div[class*="st-key-mapContainer"] {
+        position: relative;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-
-if "clickedPoints" not in st.session_state:
-    st.session_state.clickedPoints = {}
+if "clickedMap" not in st.session_state:
+    st.session_state.clickedMap = False
 
 if "selectCountry" not in st.session_state:
     st.session_state.selectCountry = None
@@ -162,6 +194,7 @@ if st.session_state.showChat:
         </style>
     """, unsafe_allow_html = True)
 
+
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
 
@@ -212,46 +245,124 @@ with tab1:
         lambda c: [int(x*255) for x in cmap(norm(c))[:3]] + [200]
     )
 
+    cdcData = pd.read_csv("data/cdc.csv")
+    normState = mcolors.Normalize(vmin = 0, vmax = cdcData["cumulativeCases"].max())
+    cmapState = mpl.colormaps["YlOrRd"]
+
+    cdcData["color"] = cdcData["cumulativeCases"].apply(
+        lambda c: [int(x*255) for x in cmapState(normState(c))[:3]] + [120]
+    )
 
     with upperMiddleGraphs[0]:
+        viewState = None
+        mapContainer = st.container(key = "mapContainer")
+        with mapContainer:
 
-        viewState = pdk.ViewState(
-            latitude = 0,
-            longitude = 0,
-            zoom = 1,
-            min_zoom = 1,
-            pitch = 0,
-            bearing = 0
-        )
+            if not st.session_state.clickedMap:
+                viewState = pdk.ViewState(
+                    latitude = 0,
+                    longitude = 0,
+                    zoom = 1,
+                    min_zoom = 1,
+                    pitch = 0,
+                    bearing = 0
+                )
+                layer = pdk.Layer(
+                    "ScatterplotLayer",
+                    data = coordinates,
+                    get_position = ["lon", "lat"],
+                    get_radius = "count",
+                    radius_scale = 200,
+                    get_radius_min_pixels = 4,
+                    pickable = True,
+                    get_fill_color= "color",
+                    auto_highlight = True,
+                    selectable = True,
+                )
+                us_layer = pdk.Layer(
+                    "GeoJsonLayer",
+                    data=usGeojson,         
+                    id="us-outline",
+                    pickable=True,             
+                    auto_highlight=True,   
+                    highlight_color=[255, 255, 0, 120],  
+                    get_fill_color=[30, 100, 200, 60],
+                    get_line_color=[60, 60, 60, 50],
+                    get_line_width=2000,
+                    stroked=True,
+                    filled=True,
+                    line_width_min_pixels = 1
+                )
 
-        layer = pdk.Layer(
-            "ScatterplotLayer",
-            data = coordinates,
-            get_position = ["lon", "lat"],
-            get_radius = "count",
-            radius_scale = 200,
-            get_radius_min_pixels = 4,
-            pickable = True,
-            get_fill_color= "color",
-            auto_highlight = True
-        )
+                rest_of_world_layer = pdk.Layer(
+                    "GeoJsonLayer",
+                    data=otherGeojson,
+                    id="background",
+                    pickable=False,       
+                    auto_highlight=False,
+                    get_fill_color=[80, 80, 80, 40],
+                    stroked=True,
+                    get_line_color=[60, 60, 60, 50],   # dark, high-opacity border you control
+                    get_line_width=1,
+                    line_width_min_pixels=1
+                )
+                deck = pdk.Deck(layers=[rest_of_world_layer, us_layer,layer], initial_view_state=viewState,map_style = "light",tooltip = {"text": "{country}\nNumber of Cases to Date: {count}\nPopulation Size: {population}\n"})
+
+                event = st.pydeck_chart(deck, on_select="rerun", selection_mode="single-object",key=f"pydeck_{st.session_state.clickedMap}",)
+
+                if event.selection and event.selection.get("objects", {}).get("us-outline"):
+                    st.session_state.clickedMap = True
+                    st.rerun()
+            else:
+                color_lookup = dict(zip(cdcData["state"], cdcData["color"])) 
+
+                
+                for feature in usStatesGeojson["features"]:
+                    stateId = feature["properties"]["name"]  
+                    feature["properties"]["color"] = color_lookup.get(stateId, [200, 200, 200, 100])
+                    stateCount = cdcData.loc[cdcData["state"] == stateId, "cumulativeCases"] 
+                    feature["properties"]["count"] = int(stateCount.values[0]) if not stateCount.empty else 0
+
+                innerViewState = pdk.ViewState(
+                    latitude = 38,
+                    longitude = -97,
+                    zoom = 3,
+                    min_zoom = 3,
+                    max_zoom = 3,
+                    pitch = 0,
+                    bearing = 0
+                )
+
+                states_layer = pdk.Layer(
+                    "GeoJsonLayer",
+                    data=usStatesGeojson,   
+                    id="us-states",
+                    pickable=True,
+                    auto_highlight=True,
+                    highlight_color=[255, 255, 0, 80],
+                    get_fill_color= "properties.color",
+                    get_line_color=[255, 255, 255, 200],
+                    get_line_width=1000,
+                )
+                
+                deck = pdk.Deck(layers=[states_layer], initial_view_state=innerViewState,map_style = "light",tooltip = {"text": "{name}\nNumber of Cases from 1993 - 2023: {count}"})
+                event = st.pydeck_chart(deck, on_select="rerun", selection_mode="single-object",key=f"pydeck_{st.session_state.clickedMap}",)
+
+                backButtonContainer = st.container(key="back_button_container")
+                with backButtonContainer:
+                    if st.button("← Back", key="back_to_world"):
+                        st.session_state.clickedMap = False
+                        st.rerun()
+                backButtonContainer.float(
+                    "position: absolute; top: 12px; left: 12px; z-index: 999;"
+                )
+
+            
         
-        mapView = pdk.View(
-            type="MapView", 
-            controller=True,
-            wrap_longitude=False,  
-            repeat=False          
-        )
+
         
-        worldView = pdk.Deck(
-            initial_view_state = viewState,
-            layers = [layer],
-            map_style = "light",
-            views = [mapView],
-            tooltip = {"text": "{country}\nNumber of Cases to Date: {count}\nPopulation Size: {population}\n"}
-        )
         
-        st.pydeck_chart(worldView)
+        
 
         graphs = st.columns(2)
         with graphs[0]:

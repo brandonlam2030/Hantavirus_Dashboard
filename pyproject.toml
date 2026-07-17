@@ -10,6 +10,7 @@ dependencies = [
     "newsapi-python>=0.2.7",
     "plotly>=6.9.0",
     "streamlit>=1.59.2",
+    "streamlit-float>=0.4.0",
 ]
 
 [tool.uv]

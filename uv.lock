@@ -54,6 +54,7 @@ dependencies = [
     { name = "newsapi-python" },
     { name = "plotly" },
     { name = "streamlit" },
+    { name = "streamlit-float" },
 ]
 
 [package.metadata]
@@ -63,6 +64,7 @@ requires-dist = [
     { name = "newsapi-python", specifier = ">=0.2.7" },
     { name = "plotly", specifier = ">=6.9.0" },
     { name = "streamlit", specifier = ">=1.59.2" },
+    { name = "streamlit-float", specifier = ">=0.4.0" },
 ]
 
 [[package]]
@@ -1016,6 +1018,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9c/13/725a798311129fc13d7e67dc690f12786c22007b34abe9fd88add9d9b044/streamlit-1.59.2.tar.gz", hash = "sha256:8fcb35df152868d33eec7ad2d89e276499a5351fb861eb1752b76476be7eb582", size = 9770703, upload-time = "2026-07-13T09:00:50.858Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/fa/4b/c2902746fb3fcc737ba925865a73475ad51521f26f84652aa9b337e12227/streamlit-1.59.2-py3-none-any.whl", hash = "sha256:5014cb4f0064bd16c58fe334cb0d3c4b7e2be3d1ce4c02202c07114a33576dab", size = 10338011, upload-time = "2026-07-13T09:00:48.464Z" },
+]
+
+[[package]]
+name = "streamlit-float"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/9c/2b01908b1821320901a0e30758b7eb9661a87983fecce11f5e39e03f120c/streamlit_float-0.4.0.tar.gz", hash = "sha256:ef1114d3b3b6356ae9175aaa89626bcf62bee476ec40a6e94e3a209accbdb82c", size = 16720, upload-time = "2025-11-14T05:48:34.188Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d9/e0/b951225656f9e22a435faa7b16ab193e1114684e45b68dbb36bd84c8e1b1/streamlit_float-0.4.0-py3-none-any.whl", hash = "sha256:3818cefe0127dd4517f39f7e9cc84acdb387e8477db3656f8e1ab8c68aa34d20", size = 16064, upload-time = "2025-11-14T05:48:33.051Z" },
 ]
 
 [[package]]

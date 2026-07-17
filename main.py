@@ -93,8 +93,7 @@ st.html("""
 <style>
 /* This single rule applies to ANY container containing "mybox" in its key */
 div[class*="st-key-mybox"] {
-    background-color: #accfff !important;
-    color: white !important;
+    background-color: #ffffff !important;
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 15px;
@@ -217,9 +216,9 @@ with tab1:
     
     with topAnalytics[0]:
         with st.container(border = True, key = "mybox_countCase", height = "stretch"):
-            st.write("Number exposure cases")
+            st.write(f"Number of exposure cases")
             st.header(f"10000")
-            st.write(f"##### :red[+4 pending cases]")
+            st.write(f"##### :red[+ {str(count())} cases pending review]")
             # st.write("###### Number of Rodent Hantavirus Carriers")
             # st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
             # st.write(f"##### :red[+ {str(count())} cases pending review]")
@@ -556,5 +555,40 @@ with tab3:
 
 
 with tab4:
-    st.header("Details about the Hantavirus")
+    
+    with st.container(key = "mybox_hantaIntro", border = True):
+        columns = st.columns(2)
+        with columns[0]:
+            st.header("Hantavirus")
+            st.subheader("Ecology, Transmission, and Risks")
+            st.write(f"##### Hantaviruses are rodent-born viruses that can cause severe respiratory disease in humans. This page provides key details about the virus, its origin/transmission and human spillover risks predicted by a geospatial-temporal epidemiology model.")
+
+        with columns[1]:
+            st.header("This is an image spot")
+
+    
+    columns = st.columns(4)
+
+    with columns[0]:
+        with st.container(key = "mybox_detail1", border = True, height = "stretch"):
+            st.header("What is Hantavirus?")
+            st.write(f"##### Hantavirus are a group of rodent born viruses. Human cases exhibit 2 common scenarios: Hantavirus Pulmonary Syndrome (HPS) and Hemorrhagic Fever with Renal Syndrome (HFRS)")
+
+    with columns[1]:
+        with st.container(key = "mybox_detail4", border = True, height = "stretch"):
+            st.header("Transmission")
+            st.write(f"##### Though human cases are rare, they are not impossible. The virus typically spreads to humans through contact with rodents like rats and mice, especially from exposure to their urine, droppings and saliva.")
+            
+    with columns[2]:
+        with st.container(key = "mybox_detail2", border = True, height = "stretch"):
+            st.header("Symptoms")
+            st.write(f"##### Symptoms of the hantavirus vary according to syndrome, however common symptoms are fever, headaches, nausea, muscle aches, and abdominal problems.")
+
+    with columns[3]:
+        with st.container(key = "mybox_detail3", border = True, height = "stretch"):
+            st.header("Treatment")
+            st.write(f"##### Though there is not specific treatment for the virus, patients should receive supportive care that includes rest, hydration and surveilance. HPS patients may need breathing assitance, whereas HFRS patients may require, dialysis to remove harmful toxins in the kidneys.")
+          
+    with st.container(key = "mybox_modelDiagram"):
+        st.header("Hantavirus Transmission Chain of Events")
 

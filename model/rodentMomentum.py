@@ -4,10 +4,11 @@ import joblib
 from sklearn.linear_model import LinearRegression
 from xgboost import XGBRegressor
 from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.model_selection import TimeSeriesSplit
 
 data = pd.read_csv("data/aggregatedData.csv")
 data["collectDate"] = pd.to_datetime(data["collectDate"])
-data = data.sort_values(by=["siteID", "collectDate"])
+data = data.sort_values(by=["collectDate", "siteID"]).reset_index(drop=True)
 
 weather_features = [
     'ndvi_lag120', 'ndvi_lag14', 'ndvi_lag30', 'ndvi_lag60',
@@ -53,10 +54,8 @@ model_env.fit(train[weather_features], train['momentumResiduals'])
 y_pred_momentum_test = model_momentum.predict(X_mom_test)
 mae_momentum_test = mean_absolute_error(y_mom_test, y_pred_momentum_test)
 r2_momentum_test = r2_score(y_mom_test, y_pred_momentum_test)
-
 predicted_residuals_test = model_env.predict(test[weather_features])
 mae_env_test = mean_absolute_error(test['momentumResiduals'], predicted_residuals_test)
-
 improvement = ((mae_momentum_test - mae_env_test) / mae_momentum_test) * 100
 
 print("\n--- HELD-OUT TEST SET RESULTS ---")
@@ -69,19 +68,59 @@ print("\nFeature Importance of Weather Modulators (fit on train only):")
 importance = pd.Series(model_env.feature_importances_, index=weather_features)
 print(importance.sort_values(ascending=False))
 
-
-data['log_prevCount_pred_input'] = data['logPrevCount']
-data['momentumPred'] = model_momentum.predict(data[['logPrevCount']])
-data['momentumResidualsFull'] = data['logCount'] - data['momentumPred']
-data['env_residual_pred'] = model_env.predict(data[weather_features])
-
-data['relative_anomaly'] = data.groupby('siteID')['count'].transform(lambda x: (x - x.mean()) / x.std())
-data['relative_anomaly'] = data['relative_anomaly'].fillna(0)
-
-final_export = data[['siteID', 'collectDate', 'count', 'relative_anomaly', 'momentumResidualsFull', 'env_residual_pred']]
-final_export = final_export.rename(columns={'momentumResidualsFull': 'momentumResiduals'})
-final_export.to_csv("model/layerData/layer1.csv", index=False)
-
 joblib.dump(model_momentum, "model/rodentMomentum.pkl")
-print("\n'layer1.csv' has been generated for Layer 2 consumption.")
-print("NOTE: reported metrics above are from the held-out test set only — this is the honest, generalizable performance estimate.")
+
+nSplits = 5
+tscv = TimeSeriesSplit(n_splits = nSplits)
+
+data["momentumPredOOF"] = np.nan
+data["momentumResidualOOF"] = np.nan
+data["envResidualsPredOOF"] = np.nan
+
+for fold, (trainIdx, holdoutIdx) in enumerate(tscv.split(data)):
+    foldTrain = data.iloc[trainIdx]
+    foldHoldout = data.iloc[holdoutIdx]
+
+    foldMomModel = LinearRegression()
+    foldMomModel.fit(foldTrain[["logPrevCount"]], foldTrain["logCount"])
+
+    foldTrainPred = foldMomModel.predict(foldTrain[["logPrevCount"]])
+    foldTrainResid = foldTrain["logCount"] - foldTrainPred
+
+    foldHoldoutPred = foldMomModel.predict(foldHoldout[["logPrevCount"]])
+    foldHoldoutResid = foldHoldout['logCount'] - foldHoldoutPred
+
+    data.loc[data.index[holdoutIdx], 'momentumPredOOF'] = foldHoldoutPred
+    data.loc[data.index[holdoutIdx], 'momentumResidualsOOF'] = foldHoldoutResid
+
+    fold_env_model = XGBRegressor(
+        n_estimators=500, learning_rate=0.01, max_depth=3,
+        subsample=0.8, colsample_bytree=0.8
+    )
+    fold_env_model.fit(foldTrain[weather_features], foldTrainResid)
+    data.loc[data.index[holdoutIdx], 'envResidualPredOOF'] = fold_env_model.predict(
+        foldHoldout[weather_features]
+    )
+
+
+n_dropped = data['momentumPredOOF'].isna().sum()
+print(f"\nRows with no OOF prediction available (first fold, dropped from export): {n_dropped}")
+ 
+
+oof_valid = data.dropna(subset=['momentumResidualsOOF'])
+implied_r2 = 1 - (oof_valid['momentumResidualsOOF'].var() / oof_valid['logCount'].var())
+print(f"Sanity check — implied R^2 from full OOF residuals: {implied_r2:.4f} (should be close to {r2_momentum_test:.4f})")
+ 
+data['relativeAnomaly'] = data.groupby('siteID')['count'].transform(lambda x: (x - x.mean()) / x.std())
+data['relativeAnomaly'] = data['relativeAnomaly'].fillna(0)
+ 
+final_export = data.dropna(subset=['momentumResidualsOOF'])[[
+    'siteID', 'collectDate', 'count', 'relativeAnomaly',
+    'momentumPredOOF', 'momentumResidualsOOF', 'envResidualPredOOF'
+]].rename(columns={
+    'momentumPredOOF': 'momentumPred',
+    'momentumResidualsOOF': 'momentumResiduals',
+    'envResidualsPredOOF': 'envResidualPred'
+})
+ 
+final_export.to_csv("model/layerData/layer1.csv", index=False)

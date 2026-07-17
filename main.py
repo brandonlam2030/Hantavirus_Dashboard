@@ -93,7 +93,7 @@ st.html("""
 <style>
 /* This single rule applies to ANY container containing "mybox" in its key */
 div[class*="st-key-mybox"] {
-    background-color: #ffffff !important;
+    background-color: #2D5133 !important;
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 15px;
@@ -105,8 +105,8 @@ st.markdown(
     """
     <style>
     /* Force color on all levels of Streamlit headers */
-    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
-        color: #4e5b68 !important;
+    stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
+        color: #c0d1c9 !important;
     }
     </style>
     """,
@@ -121,7 +121,10 @@ st.markdown("""
         width: 60px;
         height: 60px;
         font-size: 24px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        background-color: #3d5c46 !important;
+        color: #f3f4ef !important;
+        border: none !important;
+        box-shadow: 0 4px 8px rgba(31,43,36,0.25);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -174,11 +177,11 @@ if st.session_state.showChat:
 
     chatMessages.float(
         "position: fixed; bottom: 145px; left: 20px; width: 500px; height: 310px; "
-        "overflow-y: auto; z-index: 9999; background-color: white; "
-        "border-radius: 8px; padding: 8px;"
+        "overflow-y: auto; z-index: 999; background-color: white; "
+        "border-radius: 8px; padding: 8px; border: 1px solid #3d5c46;"
     )
         
-    prompt = st.chat_input("Type Here")
+    prompt = st.chat_input("Type Here", max_chars = 80)
 
 
     st.markdown("""
@@ -188,7 +191,10 @@ if st.session_state.showChat:
             bottom: 85px !important;
             left: 20px !important;
             width: 500px !important;
-            z-index: 10000 !important;
+            z-index: 998 !important;
+            border: 1px solid #3d5c46 !important;
+            border-radius:8px !important;
+            
         }
         </style>
     """, unsafe_allow_html = True)
@@ -216,8 +222,8 @@ with tab1:
     
     with topAnalytics[0]:
         with st.container(border = True, key = "mybox_countCase", height = "stretch"):
-            st.write(f"Number of exposure cases")
-            st.header(f"10000")
+            st.write("###### Number of Exposure Cases")
+            st.subheader(f"10000")
             st.write(f"##### :red[+ {str(count())} cases pending review]")
             # st.write("###### Number of Rodent Hantavirus Carriers")
             # st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
@@ -227,7 +233,7 @@ with tab1:
     with topAnalytics[1]:
         with st.container(border = True, key = "mybox_activeCase", height = "stretch"):
             st.write("###### Current Active Cases")
-            st.header(f"{str(count())} active cases")
+            st.subheader(f"{str(count())} active cases")
             time = datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
             st.write(f"##### :red[Last updated on {time[0:10]} at {time[10:]}]")
 
@@ -235,7 +241,7 @@ with tab1:
     with topAnalytics[2]:
         with st.container(border = True, key = "mybox_newsCount", height = "stretch"):
             st.subheader("TOTAL NUMBER OF RECENT ARTICLES")
-            st.header(numOfResponses)
+            st.subheader(numOfResponses)
 
     norm = mcolors.Normalize(vmin=0, vmax=coordinates["count"].max())
     cmap = mpl.colormaps["YlOrRd"]  
@@ -292,6 +298,14 @@ with tab1:
                     filled=True,
                     line_width_min_pixels = 1
                 )
+                ocean_layer = pdk.Layer(
+                    "PolygonLayer",
+                    data=[{"polygon": [[-300, -90], [300, -90], [300, 90], [-300, 90]]}],
+                    get_polygon="polygon",
+                    get_fill_color=[192,223,243, 160], 
+                    stroked=False,
+                )
+                
 
                 rest_of_world_layer = pdk.Layer(
                     "GeoJsonLayer",
@@ -299,13 +313,13 @@ with tab1:
                     id="background",
                     pickable=False,       
                     auto_highlight=False,
-                    get_fill_color=[80, 80, 80, 40],
+                    get_fill_color= [180,255,180, 150],
                     stroked=True,
-                    get_line_color=[60, 60, 60, 50],   # dark, high-opacity border you control
+                    get_line_color=[60, 60, 60, 50],   
                     get_line_width=1,
                     line_width_min_pixels=1
                 )
-                deck = pdk.Deck(layers=[rest_of_world_layer, us_layer,layer], initial_view_state=viewState,map_style = "light",tooltip = {"text": "{country}\nNumber of Cases to Date: {count}\nPopulation Size: {population}\n"})
+                deck = pdk.Deck(layers=[ocean_layer, rest_of_world_layer, us_layer,layer], initial_view_state=viewState,map_style = "light",tooltip = {"text": "{country}\nNumber of Cases to Date: {count}\nPopulation Size: {population}\n"})
 
                 event = st.pydeck_chart(deck, on_select="rerun", selection_mode="single-object",key=f"pydeck_{st.session_state.clickedMap}",)
 
@@ -368,23 +382,23 @@ with tab1:
             with st.container(border = True, key="mybox_line"):
                 lineChart = px.line(groupedCountries, x = "year", y = "case_count", color = "country", title = "Normalized Tracking of Cases per Country", labels = {"year":"Year", "case_count": "Normalized Case Count"})
                 lineChart.update_layout(
-                    plot_bgcolor = "#FFFFFF",
-                    paper_bgcolor = "#FFFFFF",
-                    title_font_color = "#4e5b68",
-                    title_subtitle_font_color= "#4e5b68",
-                    legend_font_color = "#4e5b68",
-                    font_color = "#4e5b68",
-                    legend_title_font_color = "#4e5b68"
+                    plot_bgcolor = "#2D5133",
+                    paper_bgcolor = "#2D5133",
+                    title_font_color = "#c0d1c9",
+                    title_subtitle_font_color= "#c0d1c9",
+                    legend_font_color = "#c0d1c9",
+                    font_color = "#c0d1c9",
+                    legend_title_font_color = "#c0d1c9"
                 )
 
                 lineChart.update_xaxes(
-                    title_font_color="#4e5b68",  
-                    tickfont_color="#4e5b68"     
+                    title_font_color="#c0d1c9",  
+                    tickfont_color="#c0d1c9"     
                 )
 
                 lineChart.update_yaxes(
-                    title_font_color="#4e5b68",  
-                    tickfont_color="#4e5b68"     
+                    title_font_color="#c0d1c9",  
+                    tickfont_color="#c0d1c9"     
                 )
                 st.plotly_chart(lineChart)
 
@@ -400,10 +414,16 @@ with tab1:
                             "Critical": "darkblue"
                         })
                         
+                        piChart.update_traces(textfont_color="black")
                         
                         piChart.update_layout(
-                            plot_bgcolor = "#FFFFFF",
-                            paper_bgcolor = "#FFFFFF"
+                            plot_bgcolor = "#2D5133",
+                            paper_bgcolor = "#2D5133",
+                            title_font_color = "#c0d1c9",
+                            title_subtitle_font_color= "#c0d1c9",
+                            legend_font_color = "#c0d1c9",
+                            font_color = "#c0d1c9",
+                            legend_title_font_color = "#c0d1c9"
                         )
 
                         st.plotly_chart(piChart)
@@ -442,7 +462,12 @@ with tab1:
                 plot_bgcolor="rgba(0,0,0,0)",
                 margin=dict(l=0, r=0, t=30, b=0),
                 height = 500,
-                width = 400
+                width = 400,
+                title_font_color = "#c0d1c9",
+                title_subtitle_font_color= "#c0d1c9",
+                legend_font_color = "#c0d1c9",
+                font_color = "#c0d1c9",
+                legend_title_font_color = "#c0d1c9"
             )
 
 
@@ -559,36 +584,39 @@ with tab4:
     with st.container(key = "mybox_hantaIntro", border = True):
         columns = st.columns(2)
         with columns[0]:
-            st.header("Hantavirus")
+            st.subheader("Hantavirus")
             st.subheader("Ecology, Transmission, and Risks")
             st.write(f"##### Hantaviruses are rodent-born viruses that can cause severe respiratory disease in humans. This page provides key details about the virus, its origin/transmission and human spillover risks predicted by a geospatial-temporal epidemiology model.")
 
         with columns[1]:
-            st.header("This is an image spot")
+            st.subheader("This is an image spot")
 
     
     columns = st.columns(4)
 
     with columns[0]:
         with st.container(key = "mybox_detail1", border = True, height = "stretch"):
-            st.header("What is Hantavirus?")
+            st.subheader("What is Hantavirus?")
             st.write(f"##### Hantavirus are a group of rodent born viruses. Human cases exhibit 2 common scenarios: Hantavirus Pulmonary Syndrome (HPS) and Hemorrhagic Fever with Renal Syndrome (HFRS)")
 
     with columns[1]:
         with st.container(key = "mybox_detail4", border = True, height = "stretch"):
-            st.header("Transmission")
+            st.subheader("Transmission")
             st.write(f"##### Though human cases are rare, they are not impossible. The virus typically spreads to humans through contact with rodents like rats and mice, especially from exposure to their urine, droppings and saliva.")
             
     with columns[2]:
         with st.container(key = "mybox_detail2", border = True, height = "stretch"):
-            st.header("Symptoms")
+            st.subheader("Symptoms")
             st.write(f"##### Symptoms of the hantavirus vary according to syndrome, however common symptoms are fever, headaches, nausea, muscle aches, and abdominal problems.")
 
     with columns[3]:
         with st.container(key = "mybox_detail3", border = True, height = "stretch"):
-            st.header("Treatment")
+            st.subheader("Treatment")
             st.write(f"##### Though there is not specific treatment for the virus, patients should receive supportive care that includes rest, hydration and surveilance. HPS patients may need breathing assitance, whereas HFRS patients may require, dialysis to remove harmful toxins in the kidneys.")
           
     with st.container(key = "mybox_modelDiagram"):
-        st.header("Hantavirus Transmission Chain of Events")
+        st.subheader("Hantavirus Transmission Chain of Events")
+        split = st.columns([1,10,1])
+        with split[1]: 
+            st.image("diagram.png", width = "stretch")
 

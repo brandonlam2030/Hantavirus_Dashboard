@@ -63,5 +63,6 @@ model = XGBClassifier(max_depth=3, learning_rate=.05, n_estimators=100)
 model.fit(modelData[features], y)
 
 data["prevelanceProb"] = model.predict_proba(data[features])[:,1]
-finalExport = data[["siteID", "collectDate", "count", "prevelanceProb", "momentumPred"]]
+data["predictions"] = model.predict(data[features])
+finalExport = data[["siteID", "collectDate", "count", "prevelanceProb", "momentumPred", "predictions"]]
 finalExport.to_csv("model/layerData/layer2.csv", index = False)

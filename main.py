@@ -368,8 +368,8 @@ with tab1:
             with st.container(border = True, key="mybox_line"):
                 lineChart = px.line(groupedCountries, x = "year", y = "case_count", color = "country", title = "Normalized Tracking of Cases per Country", labels = {"year":"Year", "case_count": "Normalized Case Count"})
                 lineChart.update_layout(
-                    plot_bgcolor = "#b0d2ff",
-                    paper_bgcolor = "#b0d2ff",
+                    plot_bgcolor = "#FFFFFF",
+                    paper_bgcolor = "#FFFFFF",
                     title_font_color = "#4e5b68",
                     title_subtitle_font_color= "#4e5b68",
                     legend_font_color = "#4e5b68",
@@ -402,8 +402,8 @@ with tab1:
                         
                         
                         piChart.update_layout(
-                            plot_bgcolor = "#accfff",
-                            paper_bgcolor = "#b0d2ff"
+                            plot_bgcolor = "#FFFFFF",
+                            paper_bgcolor = "#FFFFFF"
                         )
 
                         st.plotly_chart(piChart)

@@ -149,6 +149,9 @@ if "messages" not in st.session_state:
 if "showChat" not in st.session_state:
     st.session_state.showChat = False
 
+if "intro" not in st.session_state:
+    st.session_state.intro = True
+
 st.set_page_config(layout = "wide")     
 groupedCountries = cases.groupby(["country", "year"]).size().reset_index(name = "case_count")
 groupedCountries = pd.merge(groupedCountries, coordinates[["population", "country"]], on = "country", how = "left")
@@ -163,9 +166,18 @@ bubble = st.container()
 with bubble:
     if st.button("💬", key = "chat_bubble"):
         st.session_state.showChat = not st.session_state.showChat
+        st.session_state.intro = False
 
     bubble.float("position: fixed; bottom: 35px; left: 20px; z-index: 9999; height:40px")
 
+    if st.session_state.intro:
+        introduction = st.container(border = True)
+        with introduction:
+            st.write("Hi, I am a Hantavirus assistance agent. Feel free to click below, and ask any questions or inquiries about the Hantavirus.\n⬇️")
+
+        introduction.float(
+            "position: fixed; bottom: 85px; z-index: 9999; height:100px; left:20px; width: 400px; background: white; border: 1px solid black;"
+        )
 if st.session_state.showChat:
 
     chatMessages = st.container(border = True, key = "chatMessages")

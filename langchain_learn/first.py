@@ -39,7 +39,3 @@ def invokeWithRetry(agent, inputs, max_retries=5):
             else:
                 raise
     raise Exception("Max retries exceeded")
-
-# response = invoke_with_retry(agent, {"messages":[{"role": "user","content": "Are there any new reportings of the hantavirus"}]})
-
-# print(response["messages"][-1].text)

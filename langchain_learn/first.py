@@ -4,8 +4,10 @@ from dotenv import load_dotenv
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 import time
 import streamlit as st
+import os
 
 load_dotenv()
+
 def getRecentReports(city:str) -> str: 
     '''Get recent hantavirus news reports in a given city'''
     return f"news for {city}"
@@ -16,6 +18,7 @@ def getRecentReports(city:str) -> str:
 def getAgent():
     geminiModel = ChatGoogleGenerativeAI(
         model = "gemini-3.1-flash-lite",
+        api_key=os.getenv("GOOGLE_API_KEY"),
         timeout=30
     )
     

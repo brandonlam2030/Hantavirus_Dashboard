@@ -121,7 +121,7 @@ st.markdown("""
         width: 60px;
         height: 60px;
         font-size: 24px;
-        background-color: #3d5c46 !important;
+        background-color: #5C3D53 !important;
         color: #f3f4ef !important;
         border: none !important;
         box-shadow: 0 4px 8px rgba(31,43,36,0.25);
@@ -224,7 +224,7 @@ with tab1:
         with st.container(border = True, key = "mybox_countCase", height = "stretch"):
             st.write("###### Number of Exposure Cases")
             st.subheader(f"10000")
-            st.write(f"##### :red[+ {str(count())} cases pending review]")
+            st.write(f"##### :purple[+ {str(count())} cases pending review]")
             # st.write("###### Number of Rodent Hantavirus Carriers")
             # st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
             # st.write(f"##### :red[+ {str(count())} cases pending review]")
@@ -235,7 +235,7 @@ with tab1:
             st.write("###### Current Active Cases")
             st.subheader(f"{str(count())} active cases")
             time = datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-            st.write(f"##### :red[Last updated on {time[0:10]} at {time[10:]}]")
+            st.write(f"##### :purple[Last updated on {time[0:10]} at {time[10:]}]")
 
 
     with topAnalytics[2]:

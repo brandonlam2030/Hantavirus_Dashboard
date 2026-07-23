@@ -632,3 +632,73 @@ with tab4:
         with split[1]: 
             st.image("diagram.png", width = "stretch")
 
+
+with tab2:
+    st.title("Hantavirus Prediction Engine")
+    st.write("Multi-layer ecological-epidemiological risk prediction model")
+    
+    topAnalytics = st.columns(4)
+    
+    with topAnalytics[0]:
+        container = st.container(key = "mybox_sr", border = True)
+        
+        with container:
+            st.write("###### Spillover Risk Index (Global Avg)")
+            st.subheader(f"10000")
+            st.write(f"##### placeholder")
+
+    with topAnalytics[1]:
+        container = st.container(key = "mybox_rm", border = True)
+        
+        with container:
+            st.write("###### Predicted Rodent Momentum")
+            st.subheader(f"10000")
+            st.write(f"##### placeholder")
+
+    with topAnalytics[2]:
+        container = st.container(key = "mybox_ip", border = True)
+        
+        with container:
+            st.write("###### Estimated Infection Prevalence")
+            st.subheader(f"10000")
+            st.write(f"##### placeholder")
+
+    with topAnalytics[3]:
+        container = st.container(key = "mybox_acc", border = True)
+        
+        with container:
+            st.write("###### Model Accuracy")
+            st.subheader(f"10000")
+            st.write(f"##### placeholder")
+
+    
+    upperMiddleAnalytics = st.columns([4,2])
+
+    with upperMiddleAnalytics[0]:
+        container = st.container(key = "mybox_pipeline", border = True)
+
+        with container:
+            st.image("pipeline.png", width = "stretch")
+
+    
+    with upperMiddleAnalytics[1]:
+        container = st.container(key = "mybox_comp", border = True)
+
+        with container:
+            st.write("comparisons")
+
+
+    lower = st.columns(2)
+
+    with lower[0]:
+        container = st.container(key = "mybox_forecastGraph", border = True)
+
+        with container:
+            st.write("forecastGraph")
+
+    
+    with lower[1]:
+        container = st.container(key = "mybox_insights", border = True)
+
+        with container:
+            st.write("insights")

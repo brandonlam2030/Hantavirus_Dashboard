@@ -1,37 +1,99 @@
 import pandas as pd
-
-layer1DF = pd.read_csv("model/layerData/layer1.csv")
-layer2DF = pd.read_csv("model/layerData/layer2.csv")
-humanImpact= pd.read_csv("data/layer3_humanContact.csv")
-
-layer3 = layer2DF.merge(humanImpact, how = "left", on = "siteID")
-layer3["RUCC_2023"] = 10 - layer3["RUCC_2023"]
-
-staticCols = ["pctDeveloped", "pctAgricultural", "pctForest", "pctWetland", "pctWater", "pctBarren", "pctIceSnow", "pctShrubGrassland", "RUCC_2023", "Population_2020"]
-siteLevel = layer3.drop_duplicates(subset="siteID")[["siteID"] + staticCols].copy()
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
 
+def getRiskDistributionChart():
+    layer3 = pd.read_csv("final.csv")
 
-for column in staticCols:
-    mini = siteLevel[column].min()
-    maxi = siteLevel[column].max()
+    minVal = layer3["riskIndex"].min()
+    maxVal = layer3["riskIndex"].max()
+    step = (maxVal - minVal) / 3
+    bins = [minVal, minVal + step, minVal + 2*step, maxVal]
+    labels = ["Low", "Medium", "High"]
+    layer3["riskCategory"] = pd.cut(layer3["riskIndex"], bins=bins, labels=labels, include_lowest=True)
 
-    layer3[column] = (layer3[column] - mini) / (maxi - mini) 
+    counts = layer3["riskCategory"].value_counts().reindex(labels)
 
-dailyCols = ["prevelanceProb", "momentumPred"]
-for column in dailyCols:
-    mini = layer3[column].min()
-    maxi = layer3[column].max()
-    layer3[column] = (layer3[column] - mini) / (maxi - mini)
+    fig = go.Figure(go.Pie(
+        labels=counts.index,
+        values=counts.values,
+        hole=0.4,  
+        marker=dict(
+            colors=["#3fae6a", "#e0b04c", "#c15c5c"],  # low/medium/high
+            line=dict(color='#16342a', width=2)
+        ),
+        textfont=dict(color='white', size=13),
+        textinfo='label+percent',
+    ))
 
-siteLevel = layer3.drop_duplicates(subset="siteID")
-correlations = siteLevel[["pctDeveloped", "pctAgricultural", "pctShrubGrassland", 
-                            "RUCC_2023", "Population_2020"]].corrwith(siteLevel["prevelanceProb"])
-print(correlations)
+    fig.update_layout(
+        title=dict(text="Risk Distribution", font=dict(color='white', size=16)),
+        plot_bgcolor='#2D5133',
+        paper_bgcolor='#2D5133',
+        legend=dict(font=dict(color='white')),
+        margin=dict(l=10, r=10, t=50, b=10),
+        height=450,
+    )
 
-layer3["contactScore"] = (.2 *  layer3["pctDeveloped"]) + (.2 *  layer3["pctAgricultural"]) + (.2 *  layer3["pctShrubGrassland"]) + (.2 *  layer3["RUCC_2023"]) + (.2 *  layer3["Population_2020"])
-layer3["hazardScore"] = (.5 * layer3["prevelanceProb"]) + (.5 * layer3["momentumPred"])
-layer3["riskIndex"] = layer3["contactScore"] * layer3["hazardScore"]
+    return fig
 
-print(layer3[["siteID", "riskIndex"]])
-layer3.to_csv("final.csv", index = False)
+def getFactors():
+    layer2 = pd.read_csv("model/layerData/layer2.csv")
+
+    return [layer2["momentumPred"].mean(), layer2["prevelanceProb"].mean()]
+
+
+
+def getRiskAvg():
+    layer3 = pd.read_csv("final.csv")
+
+    return layer3["riskIndex"].mean()
+
+def getGraphData():
+    layer2 = pd.read_csv("final.csv")
+    layer2["collectDate"] = pd.to_datetime(layer2["collectDate"])
+
+    layer2 = layer2.groupby("collectDate", as_index = False).agg(
+        avgRisk = ("riskIndex", "mean")
+    )
+
+    layer2 = layer2.sort_values("collectDate")
+
+    return layer2.tail(120)
+
+def makeLayer3():
+    layer2DF = pd.read_csv("model/layerData/layer2.csv")
+    humanImpact= pd.read_csv("data/layer3_humanContact.csv")
+
+    layer3 = layer2DF.merge(humanImpact, how = "left", on = "siteID")
+    layer3["RUCC_2023"] = 10 - layer3["RUCC_2023"]
+
+    staticCols = ["pctDeveloped", "pctAgricultural", "pctForest", "pctWetland", "pctWater", "pctBarren", "pctIceSnow", "pctShrubGrassland", "RUCC_2023", "Population_2020"]
+    siteLevel = layer3.drop_duplicates(subset="siteID")[["siteID"] + staticCols].copy()
+
+
+
+    for column in staticCols:
+        mini = siteLevel[column].min()
+        maxi = siteLevel[column].max()
+
+        layer3[column] = (layer3[column] - mini) / (maxi - mini) 
+
+    dailyCols = ["prevelanceProb", "momentumPred"]
+    for column in dailyCols:
+        mini = layer3[column].min()
+        maxi = layer3[column].max()
+        layer3[column] = (layer3[column] - mini) / (maxi - mini)
+
+    siteLevel = layer3.drop_duplicates(subset="siteID")
+    correlations = siteLevel[["pctDeveloped", "pctAgricultural", "pctShrubGrassland", 
+                                "RUCC_2023", "Population_2020"]].corrwith(siteLevel["prevelanceProb"])
+    print(correlations)
+
+    layer3["contactScore"] = (.2 *  layer3["pctDeveloped"]) + (.2 *  layer3["pctAgricultural"]) + (.2 *  layer3["pctShrubGrassland"]) + (.2 *  layer3["RUCC_2023"]) + (.2 *  layer3["Population_2020"])
+    layer3["hazardScore"] = (.5 * layer3["prevelanceProb"]) + (.5 * layer3["momentumPred"])
+    layer3["riskIndex"] = layer3["contactScore"] * layer3["hazardScore"]
+
+    print(layer3[["siteID", "riskIndex"]])
+    layer3.to_csv("final.csv", index = False)

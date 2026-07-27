@@ -6,6 +6,11 @@ from xgboost import XGBRegressor
 from sklearn.metrics import r2_score, mean_absolute_error
 from sklearn.model_selection import TimeSeriesSplit
 
+def getMomentumScore():
+    layer1 = pd.read_csv("model/layerData/layer1.csv")
+
+    return layer1["score"].mean()
+
 data = pd.read_csv("data/aggregatedData.csv")
 data["collectDate"] = pd.to_datetime(data["collectDate"])
 data = data.sort_values(by=["collectDate", "siteID"]).reset_index(drop=True)
@@ -122,5 +127,6 @@ final_export = data.dropna(subset=['momentumResidualsOOF'])[[
     'momentumResidualsOOF': 'momentumResiduals',
     'envResidualsPredOOF': 'envResidualPred'
 })
- 
+
+final_export["score"] =  r2_momentum_test
 final_export.to_csv("model/layerData/layer1.csv", index=False)

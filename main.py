@@ -12,6 +12,9 @@ import matplotlib.colors as mcolors
 from streamlit_float import *
 from langchain_learn.first import getAgent, invokeWithRetry
 import requests
+from model.spillover import getRiskAvg, getFactors, getGraphData, getRiskDistributionChart
+from model.rodentMomentum import getMomentumScore
+from model.infectionRate import getInfectionScore, getTopFactorsChart
 
 otherGeojson = requests.get(
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson"
@@ -44,6 +47,33 @@ coordinates = load_coordinates()
 tab1, tab2, tab3, tab4 = st.tabs(["Home", "Predictions", "Report Human Cases", "Details"])
 github = ""
 agent = getAgent()
+
+def render_gauge(label, sublabel, value_pct, color, width=315, height=460):
+    circle_dim = min(width, height)      
+    radius = circle_dim * 0.41
+    center = circle_dim / 2
+    stroke_width = circle_dim * 0.07
+    circumference = 2 * 3.14159 * radius
+    offset = circumference * (1 - value_pct / 100)
+    font_size = circle_dim * 0.18
+
+    html = f"""
+    <div style="background:#2D5133; border-radius:12px; padding:16px; text-align:center; width:{width}px; height:{height}px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+        <div style="color:#e5e5e5; font-weight:600; font-size:14px;">{label}</div>
+        <div style="color:{color}; font-weight:700; font-size:15px; margin-bottom:8px;">{sublabel}</div>
+        <svg width="{circle_dim}" height="{circle_dim}" viewBox="0 0 {circle_dim} {circle_dim}">
+            <circle cx="{center}" cy="{center}" r="{radius}" fill="none" stroke="#2d3d33" stroke-width="{stroke_width}"/>
+            <circle cx="{center}" cy="{center}" r="{radius}" fill="none" stroke="{color}" stroke-width="{stroke_width}"
+                stroke-dasharray="{circumference}" stroke-dashoffset="{offset}"
+                stroke-linecap="round" transform="rotate(-90 {center} {center})"/>
+            <text x="{center}" y="{center + font_size*0.3}" text-anchor="middle" fill="#e5e5e5" font-size="{font_size}" font-weight="700">
+                {value_pct:.0f}%
+            </text>
+        </svg>
+        <div style="color:#8a9a90; font-size:12px;">Accuracy</div>
+    </div>
+    """
+    st.markdown(html, unsafe_allow_html=True)
 
 @st.cache_data(ttl = 900)
 def get_cached_news():
@@ -236,7 +266,7 @@ with tab1:
         with st.container(border = True, key = "mybox_countCase", height = "stretch"):
             st.write("###### Number of Exposure Cases")
             st.subheader(f"10000")
-            st.write(f"##### :purple[+ {str(count())} cases pending review]")
+            st.write(f"##### :red[+ {str(count())} cases pending review]")
             # st.write("###### Number of Rodent Hantavirus Carriers")
             # st.header(f"{len(rodent.loc[(rodent["testPathogenName"] == 'Hantaan virus') & (rodent["testResult"] == 'Positive')])} rodents")
             # st.write(f"##### :red[+ {str(count())} cases pending review]")
@@ -247,7 +277,7 @@ with tab1:
             st.write("###### Current Active Cases")
             st.subheader(f"{str(count())} active cases")
             time = datetime.datetime.now().strftime('%m-%d-%Y %H:%M:%S')
-            st.write(f"##### :purple[Last updated on {time[0:10]} at {time[10:]}]")
+            st.write(f"##### :red[Last updated on {time[0:10]} at {time[10:]}]")
 
 
     with topAnalytics[2]:
@@ -601,7 +631,12 @@ with tab4:
             st.write(f"##### Hantaviruses are rodent-born viruses that can cause severe respiratory disease in humans. This page provides key details about the virus, its origin/transmission and human spillover risks predicted by a geospatial-temporal epidemiology model.")
 
         with columns[1]:
-            st.subheader("This is an image spot")
+            imageSpace = st.columns(2)
+
+            with imageSpace[0]:
+                st.image("mouse.jpg", width = "stretch")
+            with imageSpace[1]:
+                st.image("hv.jpg", width = "stretch")
 
     
     columns = st.columns(4)
@@ -625,52 +660,52 @@ with tab4:
         with st.container(key = "mybox_detail3", border = True, height = "stretch"):
             st.subheader("Treatment")
             st.write(f"##### Though there is not specific treatment for the virus, patients should receive supportive care that includes rest, hydration and surveilance. HPS patients may need breathing assitance, whereas HFRS patients may require, dialysis to remove harmful toxins in the kidneys.")
-          
+
     with st.container(key = "mybox_modelDiagram"):
         st.subheader("Hantavirus Transmission Chain of Events")
+
+                
         split = st.columns([1,10,1])
         with split[1]: 
             st.image("diagram.png", width = "stretch")
+
+    # factors = st.columns(3)
+
+    # with factors[0]:
+    #     with st.container(key = "mybox_modelDiagram2", width = "content"):
+    #         st.subheader("Model Architecture")
+    #         st.image("modelDiagram.png", width = 400)
 
 
 with tab2:
     st.title("Hantavirus Prediction Engine")
     st.write("Multi-layer ecological-epidemiological risk prediction model")
     
-    topAnalytics = st.columns(4)
+    topAnalytics = st.columns(3)
     
     with topAnalytics[0]:
-        container = st.container(key = "mybox_sr", border = True)
+        container = st.container(key = "mybox_sr", border = True, height = "stretch")
         
         with container:
             st.write("###### Spillover Risk Index (Global Avg)")
-            st.subheader(f"10000")
+            st.subheader(f"{getRiskAvg().round(2)}")
             st.write(f"##### placeholder")
 
     with topAnalytics[1]:
-        container = st.container(key = "mybox_rm", border = True)
+        container = st.container(key = "mybox_rm", border = True, height = "stretch")
         
         with container:
-            st.write("###### Predicted Rodent Momentum")
-            st.subheader(f"10000")
+            st.write("###### Predicted Avg Rodent Momentum")
+            st.subheader(f"{getFactors()[0].round(2)}")
             st.write(f"##### placeholder")
 
     with topAnalytics[2]:
-        container = st.container(key = "mybox_ip", border = True)
+        container = st.container(key = "mybox_ip", border = True, height = "stretch")
         
         with container:
-            st.write("###### Estimated Infection Prevalence")
-            st.subheader(f"10000")
-            st.write(f"##### placeholder")
-
-    with topAnalytics[3]:
-        container = st.container(key = "mybox_acc", border = True)
-        
-        with container:
-            st.write("###### Model Accuracy")
-            st.subheader(f"10000")
-            st.write(f"##### placeholder")
-
+            st.write("###### Estimated Infection Prevalence Probability")
+            st.subheader(f"{(getFactors()[1]*100).round(3)}")
+            st.write(f"##### placeholder")   
     
     upperMiddleAnalytics = st.columns([4,2])
 
@@ -682,23 +717,56 @@ with tab2:
 
     
     with upperMiddleAnalytics[1]:
-        container = st.container(key = "mybox_comp", border = True)
+        layerAcc = st.columns(2)
 
-        with container:
-            st.write("comparisons")
+        with layerAcc[0]:
+            render_gauge("Layer 1", "Population Momentum", (getMomentumScore()*100).round(2), "#4ade80")
+        
+        with layerAcc[1]:
+            render_gauge("Layer 2", "Infection Prevalence", (getInfectionScore()*100).round(2), "#facc15")
 
 
     lower = st.columns(2)
 
     with lower[0]:
         container = st.container(key = "mybox_forecastGraph", border = True)
+        data = getGraphData()
 
         with container:
-            st.write("forecastGraph")
+            forecast = px.line(data, x = "collectDate", y = "avgRisk", title = "Average Risk Index per Day within the US", labels = {"collectDate":"Date", "avgRisk": "Average Risk Index"})
+            forecast.update_layout(
+                plot_bgcolor = "#2D5133",
+                paper_bgcolor = "#2D5133",
+                title_font_color = "#c0d1c9",
+                title_subtitle_font_color= "#c0d1c9",
+                legend_font_color = "#c0d1c9",
+                font_color = "#c0d1c9",
+                legend_title_font_color = "#c0d1c9"
+            )
 
+            lineChart.update_xaxes(
+                title_font_color="#c0d1c9",  
+                tickfont_color="#c0d1c9"     
+            )
+
+            lineChart.update_yaxes(
+                title_font_color="#c0d1c9",  
+                tickfont_color="#c0d1c9"     
+            )
+            st.plotly_chart(forecast)
+            
     
     with lower[1]:
-        container = st.container(key = "mybox_insights", border = True)
+        insightSpace = st.columns(2)
 
-        with container:
-            st.write("insights")
+        with insightSpace[0]:
+            container = st.container(key = "mybox_insights0", border = True)
+
+            with container:
+                st.plotly_chart(getTopFactorsChart())
+
+        with insightSpace[1]:
+            container = st.container(key = "mybox_insights1")
+
+            with container:
+                st.plotly_chart(getRiskDistributionChart())
